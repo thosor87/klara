@@ -1,6 +1,7 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import type { User } from "../types.js";
 import type { AuthService } from "./service.js";
+import { getCurrentUser } from "./guard.js";
 
 const COOKIE = "klara_session";
 
@@ -19,16 +20,6 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRoutesDeps): 
       path: "/", httpOnly: true, sameSite: "lax", secure: isProd, signed: true,
       maxAge: sessionMaxDays * 24 * 60 * 60,
     });
-  }
-
-  async function currentUser(req: FastifyRequest): Promise<User | null> {
-    const raw = req.cookies[COOKIE];
-    if (!raw) return null;
-    const unsigned = req.unsignCookie(raw);
-    if (!unsigned.valid || !unsigned.value) return null;
-    const user = await findUserById(unsigned.value);
-    if (!user || user.status !== "active") return null;
-    return user;
   }
 
   app.post<{ Body: { email?: string } }>("/api/auth/request", async (req, reply) => {
@@ -60,7 +51,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRoutesDeps): 
   });
 
   app.get("/api/me", async (req, reply) => {
-    const user = await currentUser(req);
+    const user = await getCurrentUser(req, findUserById);
     if (!user) return reply.code(401).send({ error: "unauthenticated" });
     return reply.send({ user });
   });
