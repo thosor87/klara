@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import Fastify, { type FastifyRequest, type FastifyReply } from "fastify";
 import fastifyCookie from "@fastify/cookie";
 import type { User } from "../types.js";
@@ -200,6 +200,15 @@ describe("GET /api/folders/:folderId/items", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual([]);
+  });
+
+  it("as admin → calls listFolderItems with { isAdmin: true }", async () => {
+    const listFolderItems = vi.fn(async () => []);
+    const app = await makeApp(fakeService({ listFolderItems }), ADMIN);
+
+    await app.inject({ method: "GET", url: "/api/folders/f1/items" });
+
+    expect(listFolderItems).toHaveBeenCalledWith("f1", { isAdmin: true });
   });
 });
 

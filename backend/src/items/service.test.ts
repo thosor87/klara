@@ -283,6 +283,34 @@ describe("listFolderItems", () => {
 });
 
 // ---------------------------------------------------------------------------
+// listPending
+// ---------------------------------------------------------------------------
+
+describe("listPending", () => {
+  const PENDING_WITH_FOLDER: ItemWithFolderName = {
+    ...ITEM,
+    folderName: "Klasse 3b",
+  };
+
+  it("calls storage.presignGet and attaches thumbUrl/webUrl to each item", async () => {
+    const presignGet = vi.fn(async (key: string) => `https://s3.example.com/get/${key}`);
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo({ listPending: async () => [PENDING_WITH_FOLDER] }),
+      foldersRepo: fakeFoldersRepo(),
+      storage: fakeStorage({ presignGet }),
+    });
+
+    const result = await svc.listPending();
+
+    expect(presignGet).toHaveBeenCalledWith(PENDING_WITH_FOLDER.thumbKey);
+    expect(presignGet).toHaveBeenCalledWith(PENDING_WITH_FOLDER.s3Key);
+    expect(result).toHaveLength(1);
+    expect(result[0].thumbUrl).toBe(`https://s3.example.com/get/${PENDING_WITH_FOLDER.thumbKey}`);
+    expect(result[0].webUrl).toBe(`https://s3.example.com/get/${PENDING_WITH_FOLDER.s3Key}`);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // approve / reject
 // ---------------------------------------------------------------------------
 

@@ -1,11 +1,11 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { ItemsService } from "./service.js";
 import { AppError } from "./service.js";
 
 export interface ItemRoutesDeps {
   itemsService: ItemsService;
-  requireUser: (req: any, reply: any) => Promise<void>;
-  requireAdmin: (req: any, reply: any) => Promise<void>;
+  requireUser: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
 }
 
 export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): void {

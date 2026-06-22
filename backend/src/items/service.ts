@@ -53,7 +53,7 @@ export function createItemsService(deps: ItemsServiceDeps): ItemsService {
 
     async confirmUpload(folderId, itemId, caption, userId) {
       // Verify folder exists and is enabled
-      const folder = await deps.foldersRepo.findById(folderId);
+      const folder = await foldersRepo.findById(folderId);
       if (!folder || !folder.enabled) {
         throw new AppError("folder_not_found", "Folder not found or not enabled");
       }
@@ -88,11 +88,13 @@ export function createItemsService(deps: ItemsServiceDeps): ItemsService {
       const items = await itemsRepo.listByFolder(folderId, statuses);
 
       return Promise.all(
-        items.map(async (item) => ({
-          ...item,
-          thumbUrl: await storage.presignGet(item.thumbKey),
-          webUrl: await storage.presignGet(item.s3Key),
-        })),
+        items.map(async (item) => {
+          const [thumbUrl, webUrl] = await Promise.all([
+            storage.presignGet(item.thumbKey),
+            storage.presignGet(item.s3Key),
+          ]);
+          return { ...item, thumbUrl, webUrl };
+        }),
       );
     },
 
@@ -100,11 +102,13 @@ export function createItemsService(deps: ItemsServiceDeps): ItemsService {
       const items = await itemsRepo.listPending();
 
       return Promise.all(
-        items.map(async (item) => ({
-          ...item,
-          thumbUrl: await storage.presignGet(item.thumbKey),
-          webUrl: await storage.presignGet(item.s3Key),
-        })),
+        items.map(async (item) => {
+          const [thumbUrl, webUrl] = await Promise.all([
+            storage.presignGet(item.thumbKey),
+            storage.presignGet(item.s3Key),
+          ]);
+          return { ...item, thumbUrl, webUrl };
+        }),
       );
     },
 
