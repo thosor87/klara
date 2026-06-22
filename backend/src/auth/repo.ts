@@ -109,16 +109,16 @@ export function createPostgresAuthRepo(sql: SqlTag): AuthRepo {
     },
 
     async listUsers() {
-      const rows = await sql<Record<string, unknown>[]>`SELECT * FROM users ORDER BY created_at ASC`;
+      const rows = await sql<Record<string, unknown>[]>`select * from users order by created_at asc`;
       return rows.map(mapUser);
     },
 
     async upsertActiveUser(email, role) {
       const rows = await sql<Record<string, unknown>[]>`
-        INSERT INTO users (email, role, status)
-        VALUES (${email}, ${role}, 'active')
-        ON CONFLICT (email) DO UPDATE SET status = 'active', role = ${role}
-        RETURNING *`;
+        insert into users (email, role, status)
+        values (${email}, ${role}, 'active')
+        on conflict (email) do update set status = 'active', role = ${role}
+        returning *`;
       return mapUser(rows[0]);
     },
 
@@ -127,13 +127,14 @@ export function createPostgresAuthRepo(sql: SqlTag): AuthRepo {
       if (data.status !== undefined) updates.status = data.status;
       if (data.role !== undefined) updates.role = data.role;
 
+      // Route guards ensure updates is never empty; branch kept for interface correctness.
       if (Object.keys(updates).length === 0) {
-        const rows = await sql<Record<string, unknown>[]>`SELECT * FROM users WHERE id = ${id}`;
+        const rows = await sql<Record<string, unknown>[]>`select * from users where id = ${id}`;
         return rows.length ? mapUser(rows[0]) : null;
       }
 
       const rows = await sql<Record<string, unknown>[]>`
-        UPDATE users SET ${sql(updates)} WHERE id = ${id} RETURNING *`;
+        update users set ${sql(updates)} where id = ${id} returning *`;
       return rows.length ? mapUser(rows[0]) : null;
     },
   };

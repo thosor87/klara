@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import type { User, LoginTokenRow } from "../types.js";
+import type { User, UserRole, UserStatus, LoginTokenRow } from "../types.js";
 import type { AuthRepo, NewLoginToken } from "./repo.js";
 import type { Mailer } from "./mailer.js";
 import { createAuthService } from "./service.js";
@@ -39,13 +39,13 @@ class FakeRepo implements AuthRepo {
     const t = this.tokens.find((x) => x.id === id); if (t) t.attempts++;
   }
   async listUsers() { return [...this.users]; }
-  async upsertActiveUser(email: string, role: import("../types.js").UserRole): Promise<User> {
+  async upsertActiveUser(email: string, role: UserRole): Promise<User> {
     const existing = this.users.find((u) => u.email === email);
     if (existing) { existing.status = "active"; existing.role = role; return existing; }
     const u: User = { id: `u${++this.seq}`, email, role, status: "active", createdAt: new Date(0).toISOString() };
     this.users.push(u); return u;
   }
-  async updateUser(id: string, data: { status?: import("../types.js").UserStatus; role?: import("../types.js").UserRole }): Promise<User | null> {
+  async updateUser(id: string, data: { status?: UserStatus; role?: UserRole }): Promise<User | null> {
     const u = this.users.find((x) => x.id === id);
     if (!u) return null;
     if (data.status !== undefined) u.status = data.status;

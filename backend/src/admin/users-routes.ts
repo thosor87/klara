@@ -47,6 +47,11 @@ export function registerAdminUserRoutes(app: FastifyInstance, deps: AdminUserRou
       const { id } = req.params;
       const { status, role } = req.body ?? {};
 
+      // Reject empty patch bodies — nothing to update
+      if (status === undefined && role === undefined) {
+        return reply.code(400).send({ error: "nothing to update" });
+      }
+
       // cannot_modify_self guard: block disabling self or demoting self admin→member
       if (req.user!.id === id) {
         if (status === "disabled" || role === "member") {
