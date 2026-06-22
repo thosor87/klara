@@ -25,6 +25,8 @@ export const config = {
   mailTransport:
     (process.env.MAIL_TRANSPORT ?? "").toLowerCase() ||
     ((process.env.NODE_ENV ?? "development") === "production" ? "ses" : "console"),
+  s3Bucket: process.env.S3_BUCKET ?? "",
+  s3Region: process.env.S3_REGION ?? "eu-central-1",
   ses: {
     region: process.env.SES_REGION ?? "eu-central-1",
     fromAddress: process.env.SES_FROM_ADDRESS ?? "",
