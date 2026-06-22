@@ -66,10 +66,14 @@ React-SPA  ──────►  Fastify-Function (fra1)  ──►  Neon Postg
    erreichbar. Jeder Up-/Download läuft über **presigned URLs**, die die API
    erst nach Auth- und Freigabe-Prüfung ausstellt, kurzlebig. Die API ist
    Türsteher, S3 nur Tresor.
-2. **EXIF/GPS-Entfernung beim Upload.** Der Client verkleinert das Bild über
-   ein Canvas-Re-Encode (entfernt Metadaten inhärent) und erzeugt eine Web-
-   und eine Thumbnail-Version. Beide werden hochgeladen; Original verlässt das
-   Gerät nicht ungefiltert.
+2. **EXIF/GPS-Entfernung beim Upload.** Handyfotos tragen unsichtbare
+   Metadaten — meist die GPS-Koordinate des Aufnahmeorts, Datum/Uhrzeit und das
+   Gerätemodell. Bei Kinderfotos verrät das faktisch Wohn-/Aufenthaltsorte und
+   wandert beim Teilen unbemerkt mit; nach DSGVO sind das besonders
+   schützenswerte personenbezogene Daten. Der Client verkleinert das Bild
+   daher über ein Canvas-Re-Encode (entfernt diese Metadaten inhärent) und
+   erzeugt eine Web- und eine Thumbnail-Version. Beide werden hochgeladen;
+   das Original verlässt das Gerät nicht ungefiltert.
 3. **Kein Zugriff ohne aktiven, bestätigten Account.** Auch Teilen-Links
    führen nur zum Login.
 
