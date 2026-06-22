@@ -10,6 +10,14 @@ import { createAuthService } from "./auth/service.js";
 import { createPostgresAuthRepo } from "./auth/repo.js";
 import { createSesMailer, createConsoleMailer } from "./auth/mailer.js";
 import { registerAuthRoutes } from "./auth/routes.js";
+import { makeGuards } from "./auth/guard.js";
+import { createS3Storage } from "./storage/s3.js";
+import { createPostgresFoldersRepo } from "./folders/repo.js";
+import { registerFolderRoutes } from "./folders/routes.js";
+import { createPostgresItemsRepo } from "./items/repo.js";
+import { createItemsService } from "./items/service.js";
+import { registerItemRoutes } from "./items/routes.js";
+import { registerAdminUserRoutes } from "./admin/users-routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -52,19 +60,29 @@ export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance
 
 /** Baut die echten Adapter und liefert BuildOptions für buildApp(). */
 export async function defaultRuntime(): Promise<BuildOptions> {
-  const repo = createPostgresAuthRepo(sql);
+  const authRepo = createPostgresAuthRepo(sql);
   const mailer = config.mailTransport === "ses" ? createSesMailer() : createConsoleMailer();
   const service = createAuthService({
-    repo, mailer, allowedDomains: config.allowedDomains,
+    repo: authRepo, mailer, allowedDomains: config.allowedDomains,
     tokenTtlMinutes: config.tokenTtlMinutes, appBaseUrl: config.appBaseUrl,
   });
+
+  const storage = createS3Storage();
+  const foldersRepo = createPostgresFoldersRepo(sql);
+  const itemsRepo = createPostgresItemsRepo(sql);
+  const itemsService = createItemsService({ itemsRepo, foldersRepo, storage });
+  const { requireUser, requireAdmin } = makeGuards((id) => authRepo.findUserById(id));
+
   return {
     registerRoutes(app) {
       registerAuthRoutes(app, {
-        service, findUserById: (id) => repo.findUserById(id),
+        service, findUserById: (id) => authRepo.findUserById(id),
         sessionMaxDays: config.sessionMaxDays,
         isProd: config.nodeEnv === "production",
       });
+      registerFolderRoutes(app, { foldersRepo, requireUser, requireAdmin });
+      registerItemRoutes(app, { itemsService, requireUser, requireAdmin });
+      registerAdminUserRoutes(app, { authRepo, requireAdmin });
     },
   };
 }
