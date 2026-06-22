@@ -26,11 +26,11 @@ export interface BuildOptions {
 export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance> {
   const frontendDist = resolveFrontendDist();
   const app = Fastify({
-    logger: { level: process.env.NODE_ENV === "production" ? "info" : "debug" },
+    logger: { level: config.nodeEnv === "production" ? "info" : "debug" },
     bodyLimit: 64 * 1024,
   });
 
-  await app.register(fastifyCookie, { secret: process.env.SESSION_SECRET ?? "dev-secret" });
+  await app.register(fastifyCookie, { secret: config.sessionSecret });
 
   app.get("/healthz", async () => ({ ok: true }));
 
@@ -62,7 +62,7 @@ export async function defaultRuntime(): Promise<BuildOptions> {
     registerRoutes(app) {
       registerAuthRoutes(app, {
         service, findUserById: (id) => repo.findUserById(id),
-        sessionSecret: config.sessionSecret, sessionMaxDays: config.sessionMaxDays,
+        sessionMaxDays: config.sessionMaxDays,
         isProd: config.nodeEnv === "production",
       });
     },

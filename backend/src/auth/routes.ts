@@ -7,7 +7,6 @@ const COOKIE = "klara_session";
 export interface AuthRoutesDeps {
   service: AuthService;
   findUserById: (id: string) => Promise<User | null>;
-  sessionSecret: string;
   sessionMaxDays: number;
   isProd: boolean;
 }

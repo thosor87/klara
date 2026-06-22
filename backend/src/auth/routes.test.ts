@@ -20,7 +20,7 @@ async function makeApp(svc: AuthService, lookup: (id: string) => Promise<User | 
   const app = Fastify();
   await app.register(fastifyCookie, { secret: "test-secret" });
   registerAuthRoutes(app, { service: svc, findUserById: lookup,
-    sessionSecret: "test-secret", sessionMaxDays: 30, isProd: false });
+    sessionMaxDays: 30, isProd: false });
   await app.ready();
   return app;
 }
