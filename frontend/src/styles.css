@@ -98,3 +98,32 @@ button:disabled { opacity: .5; cursor: default; }
 .upload-done { color: #059669; font-weight: 500; margin-top: .75rem; }
 .dialog-actions { display: flex; gap: .75rem; margin-top: 1.25rem; justify-content: flex-end; flex-wrap: wrap; }
 .dialog-actions button { width: auto; margin: 0; }
+
+/* Approval queue */
+.approval-queue { display: flex; flex-direction: column; gap: 1rem; }
+.approval-header { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 1rem; }
+.approval-header h2 { margin: 0; color: #5b3fb0; }
+.approval-actions { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin-left: auto; }
+.select-all-label { display: flex; align-items: center; gap: .4rem; cursor: pointer;
+                    font-size: .9rem; white-space: nowrap; }
+.select-all-label input { width: auto; margin: 0; accent-color: #5b3fb0; }
+.btn-approve { background: #059669; color: #fff; border: none; border-radius: 10px;
+               padding: .55rem 1.1rem; cursor: pointer; font: inherit; width: auto; margin: 0; }
+.btn-approve:disabled { opacity: .5; cursor: default; }
+.btn-reject { background: #dc2626; color: #fff; border: none; border-radius: 10px;
+              padding: .55rem 1.1rem; cursor: pointer; font: inherit; width: auto; margin: 0; }
+.btn-reject:disabled { opacity: .5; cursor: default; }
+.approval-msg { font-weight: 500; color: #5b3fb0; }
+.approval-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
+.approval-item { background: #fff; border-radius: 12px; overflow: hidden;
+                 box-shadow: 0 3px 12px rgba(80,60,160,.08); cursor: pointer;
+                 border: 2px solid transparent; transition: border-color .15s; }
+.approval-item.selected { border-color: #5b3fb0; }
+.approval-thumb-wrap { position: relative; aspect-ratio: 1; }
+.approval-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+.approval-checkbox { position: absolute; top: .5rem; left: .5rem; width: 18px; height: 18px;
+                     accent-color: #5b3fb0; cursor: pointer; }
+.approval-info { padding: .5rem .6rem; }
+.approval-folder { font-size: .8rem; color: #5b3fb0; font-weight: 600; }
+.approval-caption { font-size: .8rem; color: #6b6580; margin-top: .2rem;
+                    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
