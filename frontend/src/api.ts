@@ -3,8 +3,8 @@ export interface Me { id: string; email: string; role: "admin" | "member"; statu
 export interface Folder {
   id: string;
   name: string;
-  schoolYear: string;
-  classLabel: string;
+  schoolYear?: string;
+  classLabel?: string;
   enabled: boolean;
   itemCount: number;
 }

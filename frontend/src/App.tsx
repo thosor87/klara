@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { api, type Me } from "./api";
+import { api, type Me, type Folder } from "./api";
 import { TopBar } from "./components/TopBar";
 import { NavBar } from "./components/NavBar";
+import { FolderList } from "./components/FolderList";
+import { FolderView } from "./components/FolderView";
 import { type View } from "./types";
 
 type Stage = "loading" | "email" | "code" | "in";
@@ -9,6 +11,7 @@ type Stage = "loading" | "email" | "code" | "in";
 function AppShell({ me, onLogout }: { me: Me; onLogout: () => void }) {
   const [view, setView] = useState<View>("folders");
   const [pendingCount, setPendingCount] = useState(0);
+  const [openFolder, setOpenFolder] = useState<Folder | null>(null);
 
   useEffect(() => {
     if (me.role !== "admin") return;
@@ -20,12 +23,21 @@ function AppShell({ me, onLogout }: { me: Me; onLogout: () => void }) {
     return () => clearInterval(id);
   }, [me.role]);
 
+  function handleNav(newView: View) {
+    setOpenFolder(null);
+    setView(newView);
+  }
+
   return (
     <div className="app">
       <TopBar email={me.email} onLogout={onLogout} />
-      <NavBar role={me.role} view={view} onNav={setView} pendingCount={pendingCount} />
+      <NavBar role={me.role} view={view} onNav={handleNav} pendingCount={pendingCount} />
       <main className="app-content">
-        {view === "folders" && <div className="placeholder">Ordner-Ansicht (kommt gleich)</div>}
+        {view === "folders" && (
+          openFolder
+            ? <FolderView folder={openFolder} onBack={() => setOpenFolder(null)} />
+            : <FolderList onOpenFolder={setOpenFolder} />
+        )}
         {view === "approval" && me.role === "admin" && <div className="placeholder">Freigabe-Queue (kommt gleich)</div>}
         {view === "admin-folders" && me.role === "admin" && <div className="placeholder">Ordner verwalten (kommt gleich)</div>}
         {view === "admin-users" && me.role === "admin" && <div className="placeholder">Nutzer-Verwaltung (kommt gleich)</div>}
