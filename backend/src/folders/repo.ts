@@ -1,5 +1,7 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 import type { Sql } from "postgres";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SqlTag = Sql<any>;
 
 export interface Folder {
   id: string;
@@ -41,8 +43,7 @@ function mapFolder(r: Record<string, unknown>): Folder {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function createPostgresFoldersRepo(sql: Sql<any>): FoldersRepo {
+export function createPostgresFoldersRepo(sql: SqlTag): FoldersRepo {
   return {
     async listAll() {
       const rows = await sql<Record<string, unknown>[]>`
@@ -71,26 +72,18 @@ export function createPostgresFoldersRepo(sql: Sql<any>): FoldersRepo {
     },
 
     async update(id, data) {
-      const existing = await this.findById(id);
-      if (!existing) return null;
+      const updates: Record<string, unknown> = {};
+      if (data.name !== undefined) updates.name = data.name;
+      if (data.schoolYear !== undefined) updates.school_year = data.schoolYear;
+      if (data.classLabel !== undefined) updates.class_label = data.classLabel;
+      if (data.enabled !== undefined) updates.enabled = data.enabled;
 
-      const updated = {
-        name: data.name ?? existing.name,
-        school_year: data.schoolYear ?? existing.schoolYear,
-        class_label: data.classLabel ?? existing.classLabel,
-        enabled: data.enabled ?? existing.enabled,
-      };
+      if (Object.keys(updates).length === 0) {
+        return this.findById(id);
+      }
 
       const rows = await sql<Record<string, unknown>[]>`
-        UPDATE folders
-        SET
-          name        = ${updated.name},
-          school_year = ${updated.school_year},
-          class_label = ${updated.class_label},
-          enabled     = ${updated.enabled}
-        WHERE id = ${id}
-        RETURNING *`;
-
+        UPDATE folders SET ${sql(updates)} WHERE id = ${id} RETURNING *`;
       return rows.length ? mapFolder(rows[0]) : null;
     },
 
