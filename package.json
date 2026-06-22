@@ -1,0 +1,20 @@
+{
+  "name": "klara",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": ["backend", "frontend"],
+  "scripts": {
+    "dev:backend": "npm --workspace backend run dev",
+    "dev:frontend": "npm --workspace frontend run dev",
+    "build": "npm --workspace frontend run build && npm --workspace backend run build",
+    "start": "node backend/dist/server.js",
+    "test": "npm --workspace backend run test",
+    "migrate": "tsx scripts/migrate.ts",
+    "seed:admin": "tsx scripts/seed-admin.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}
