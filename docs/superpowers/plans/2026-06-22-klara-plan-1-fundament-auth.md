@@ -1729,3 +1729,28 @@ git commit -m "docs: readme with local + deploy instructions"
 
 **Nicht in Plan 1 (kommt in Plan 2):** Admin-UI zum Bestätigen von `pending`-Nutzern und Hinzufügen/Verwalten von Mitgliedern, Ordner, Upload, Freigabe. In Plan 1 meldet sich nur der geseedete Admin an; das ist die testbare Grundlage.
 ```
+
+---
+
+## Umsetzungs-Notizen / Abweichungen (nachträglich dokumentiert, 2026-06-22)
+
+Die Umsetzung folgte dem Plan, mit diesen bewussten Abweichungen (Reviews + reale Provisionierung):
+
+**Security-Härtung (aus Code-Review):**
+- `login_tokens` hat zusätzlich eine Spalte `attempts int not null default 0`. Nach `MAX_CODE_ATTEMPTS = 5` Fehlversuchen ist der Token ungültig (`findLatestActiveToken` filtert `attempts < 5`; `service` zählt bei falschem Code hoch). Schützt den 6-stelligen Code gegen Brute Force.
+- `eligibility.ts` hat `isValidEmailFormat`; `decideLoginAction` lehnt formal ungültige Adressen ab (keine Müll-`pending`-Zeilen).
+- `migrate.ts` und `seed-admin.ts` prüfen `DATABASE_URL` explizit (klare Fehlermeldung statt kryptischem Connect-Fehler).
+
+**Struktur:**
+- Task 9 (Postgres-`AuthRepo`) wurde vorgezogen und in den Härtungs-Commit gefaltet. `createPostgresAuthRepo(sql)` bekommt den `sql`-Client injiziert (statt globalem Import) — bessere Testbarkeit.
+- Session-Secret hat genau **eine** Quelle: `buildApp` signiert Cookies mit `config.sessionSecret`. Das tote `sessionSecret`-Feld in `AuthRoutesDeps` wurde entfernt.
+
+**Infrastruktur (real provisioniert):**
+- Vercel-Projekt `tsoring-5597s-projects/klara` angelegt und mit GitHub `thosor87/klara` verbunden (Auto-Deploy bei Push).
+- Neon-DB `neon-cobalt-notebook` über die Vercel-Marketplace-Integration provisioniert → liefert `DATABASE_URL` (pooled, Frankfurt) in die Vercel-Env. Lokal: `.env` mit `MAIL_TRANSPORT=console`.
+- Verifiziert: Migration + Seed gegen Neon ausgeführt; automatischer Login-E2E (request → Code aus Log → verify → signiertes Cookie → `/api/me`) grün; `/api/me` ohne Cookie → 401.
+
+**Offene Folge-Punkte (NICHT Teil von Plan 1):**
+- Per-E-Mail/IP-Rate-Limit auf `/api/auth/request` + `/verify` (Defense-in-Depth, Ergänzung zum Token-Attempt-Limit).
+- **SES-Setup für Produktion:** Der SES-Absender (`SES_FROM_ADDRESS`) muss eine in SES **verifizierte Identität sein, die der Betreiber kontrolliert** (z.B. eine lilapixel-Adresse) — **nicht** `@gs-alexandersfeld.de` (deren DNS wir nicht besitzen). Empfänger ist die Schul-Adresse; nur der Absender muss verifiziert sein. Zusätzlich SES-Sandbox-Freischaltung.
+- Vercel-Produktions-Env setzen, bevor das Deployment nutzbar ist: `SESSION_SECRET`, `ALLOWED_EMAIL_DOMAINS`, `INITIAL_ADMIN_EMAIL`, `MAIL_TRANSPORT`, `SES_*`, `APP_BASE_URL`.
