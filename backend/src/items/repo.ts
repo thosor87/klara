@@ -93,7 +93,7 @@ export function createPostgresItemsRepo(sql: SqlTag): ItemsRepo {
 
     async setStatusApproved(ids, approvedBy) {
       if (ids.length === 0) return 0;
-      const rows = await sql<{ count: string }[]>`
+      const rows = await sql<{ id: string }[]>`
         UPDATE items
         SET status = 'approved', approved_by = ${approvedBy}
         WHERE id = ANY(${sql.array(ids)})

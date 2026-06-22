@@ -142,7 +142,7 @@ describe("confirmUpload", () => {
     const headExists = vi.fn(async () => true);
     const svc = createItemsService({
       itemsRepo: fakeItemsRepo(),
-      foldersRepo: fakeFoldersRepo(),
+      foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER }),
       storage: fakeStorage({ headExists }),
     });
 
@@ -156,7 +156,7 @@ describe("confirmUpload", () => {
   it("throws AppError upload_incomplete when web key does not exist", async () => {
     const svc = createItemsService({
       itemsRepo: fakeItemsRepo(),
-      foldersRepo: fakeFoldersRepo(),
+      foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER }),
       storage: fakeStorage({
         headExists: async (key) => !key.endsWith("web.jpg"),
       }),
@@ -171,7 +171,7 @@ describe("confirmUpload", () => {
   it("throws AppError upload_incomplete when thumb key does not exist", async () => {
     const svc = createItemsService({
       itemsRepo: fakeItemsRepo(),
-      foldersRepo: fakeFoldersRepo(),
+      foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER }),
       storage: fakeStorage({
         headExists: async (key) => !key.endsWith("thumb.jpg"),
       }),
@@ -187,7 +187,7 @@ describe("confirmUpload", () => {
     const insertPending = vi.fn(async () => ITEM);
     const svc = createItemsService({
       itemsRepo: fakeItemsRepo({ insertPending }),
-      foldersRepo: fakeFoldersRepo(),
+      foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER }),
       storage: fakeStorage(),
     });
 
@@ -204,12 +204,30 @@ describe("confirmUpload", () => {
   it("returns the inserted item", async () => {
     const svc = createItemsService({
       itemsRepo: fakeItemsRepo({ insertPending: async () => ITEM }),
-      foldersRepo: fakeFoldersRepo(),
+      foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER }),
       storage: fakeStorage(),
     });
 
     const result = await svc.confirmUpload("f1", "item1", "", "u1");
     expect(result).toEqual(ITEM);
+  });
+
+  it("confirmUpload throws folder_not_found when folder is disabled", async () => {
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo({ insertPending: vi.fn() }),
+      foldersRepo: fakeFoldersRepo({ findById: async () => DISABLED_FOLDER }),
+      storage: fakeStorage({ headExists: async () => true }),
+    });
+    await expect(svc.confirmUpload("f-dis", "item1", "", "u1")).rejects.toMatchObject({ code: "folder_not_found" });
+  });
+
+  it("confirmUpload throws folder_not_found when folder not found", async () => {
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo({ insertPending: vi.fn() }),
+      foldersRepo: fakeFoldersRepo({ findById: async () => null }),
+      storage: fakeStorage({ headExists: async () => true }),
+    });
+    await expect(svc.confirmUpload("missing", "item1", "", "u1")).rejects.toMatchObject({ code: "folder_not_found" });
   });
 });
 

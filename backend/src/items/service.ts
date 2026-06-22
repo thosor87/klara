@@ -52,6 +52,12 @@ export function createItemsService(deps: ItemsServiceDeps): ItemsService {
     },
 
     async confirmUpload(folderId, itemId, caption, userId) {
+      // Verify folder exists and is enabled
+      const folder = await deps.foldersRepo.findById(folderId);
+      if (!folder || !folder.enabled) {
+        throw new AppError("folder_not_found", "Folder not found or not enabled");
+      }
+
       const webKey = `items/${itemId}/web.jpg`;
       const thumbKey = `items/${itemId}/thumb.jpg`;
 
