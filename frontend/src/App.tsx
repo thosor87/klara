@@ -1,7 +1,38 @@
 import { useEffect, useState } from "react";
 import { api, type Me } from "./api";
+import { TopBar } from "./components/TopBar";
+import { NavBar } from "./components/NavBar";
+import { type View } from "./types";
 
 type Stage = "loading" | "email" | "code" | "in";
+
+function AppShell({ me, onLogout }: { me: Me; onLogout: () => void }) {
+  const [view, setView] = useState<View>("folders");
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (me.role !== "admin") return;
+    function refresh() {
+      api.getPending().then((items) => setPendingCount(items.length));
+    }
+    refresh();
+    const id = setInterval(refresh, 30_000);
+    return () => clearInterval(id);
+  }, [me.role]);
+
+  return (
+    <div className="app">
+      <TopBar email={me.email} onLogout={onLogout} />
+      <NavBar role={me.role} view={view} onNav={setView} pendingCount={pendingCount} />
+      <main className="app-content">
+        {view === "folders" && <div className="placeholder">Ordner-Ansicht (kommt gleich)</div>}
+        {view === "approval" && me.role === "admin" && <div className="placeholder">Freigabe-Queue (kommt gleich)</div>}
+        {view === "admin-folders" && me.role === "admin" && <div className="placeholder">Ordner verwalten (kommt gleich)</div>}
+        {view === "admin-users" && me.role === "admin" && <div className="placeholder">Nutzer-Verwaltung (kommt gleich)</div>}
+      </main>
+    </div>
+  );
+}
 
 export function App() {
   const [stage, setStage] = useState<Stage>("loading");
@@ -17,29 +48,34 @@ export function App() {
 
   async function submitEmail(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setErr("");
-    await api.requestLogin(email);
-    setBusy(false); setStage("code");
+    try {
+      await api.requestLogin(email);
+      setStage("code");
+    } catch {
+      setErr("Anfrage fehlgeschlagen. Bitte erneut versuchen.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function submitCode(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setErr("");
-    const u = await api.verify(email, code.trim());
-    setBusy(false);
-    if (u) { setMe(u); setStage("in"); }
-    else setErr("Code stimmt nicht oder ist abgelaufen.");
+    try {
+      const u = await api.verify(email, code.trim());
+      if (u) { setMe(u); setStage("in"); }
+      else setErr("Code stimmt nicht oder ist abgelaufen.");
+    } catch {
+      setErr("Anmeldung fehlgeschlagen. Bitte erneut versuchen.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function logout() { await api.logout(); setMe(null); setEmail(""); setCode(""); setStage("email"); }
 
   if (stage === "loading") return <main className="card"><p>Lädt …</p></main>;
 
-  if (stage === "in" && me) return (
-    <main className="card">
-      <h1>KlaRa</h1>
-      <p>Angemeldet als <b>{me.email}</b>{me.role === "admin" ? " (Lehrerin/Admin)" : ""}.</p>
-      <button onClick={logout}>Abmelden</button>
-    </main>
-  );
+  if (stage === "in" && me) return <AppShell me={me} onLogout={logout} />;
 
   if (stage === "code") return (
     <main className="card">

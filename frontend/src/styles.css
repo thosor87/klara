@@ -10,3 +10,36 @@ button { background: #5b3fb0; color: #fff; border: none; cursor: pointer; }
 button:disabled { opacity: .5; cursor: default; }
 .err { color: #b00038; margin-top: .6rem; }
 .muted { color: #6b6580; font-size: .9rem; }
+
+/* App shell */
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+.app-content { flex: 1; padding: 1.5rem; max-width: 1100px; margin: 0 auto; width: 100%; }
+
+/* Top bar */
+.topbar { display: flex; align-items: center; justify-content: space-between;
+          padding: .75rem 1.5rem; background: #5b3fb0; color: #fff; }
+.topbar-brand { font-weight: 700; font-size: 1.2rem; }
+.topbar-right { display: flex; align-items: center; gap: .75rem; }
+.topbar-email { font-size: .85rem; opacity: .85; }
+.btn-ghost { background: transparent; border: 1px solid rgba(255,255,255,.4); color: #fff;
+             padding: .4rem .9rem; border-radius: 8px; cursor: pointer; font: inherit;
+             width: auto; margin: 0; }
+.btn-ghost:hover { background: rgba(255,255,255,.15); }
+
+/* Nav bar */
+.navbar { display: flex; gap: .5rem; padding: .75rem 1.5rem; background: #fff;
+          border-bottom: 1px solid #e8e4f5; overflow-x: auto; }
+.nav-item { background: transparent; border: none; color: #5b3fb0; padding: .5rem 1rem;
+            border-radius: 8px; cursor: pointer; font: inherit; white-space: nowrap;
+            width: auto; margin: 0; position: relative; }
+.nav-item:hover { background: #f3f1fb; }
+.nav-item.active { background: #5b3fb0; color: #fff; }
+
+/* Badge */
+.badge { display: inline-flex; align-items: center; justify-content: center;
+         background: #e53e3e; color: #fff; border-radius: 999px;
+         font-size: .7rem; font-weight: 700; min-width: 18px; height: 18px;
+         padding: 0 4px; margin-left: .35rem; }
+
+/* Placeholder */
+.placeholder { color: #6b6580; padding: 2rem; text-align: center; }
