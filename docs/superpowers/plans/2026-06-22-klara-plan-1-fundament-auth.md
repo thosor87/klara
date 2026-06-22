@@ -500,9 +500,16 @@ export const config = {
   sessionMaxDays: Number(process.env.SESSION_MAX_DAYS ?? 30),
   tokenTtlMinutes: Number(process.env.LOGIN_TOKEN_TTL_MINUTES ?? 15),
   appBaseUrl: process.env.APP_BASE_URL ?? "http://localhost:3000",
+  // 'console' (Dev: Mail in die Konsole) oder 'ses' (echter Versand).
+  // Default: in Produktion 'ses', sonst 'console'.
+  mailTransport:
+    (process.env.MAIL_TRANSPORT ?? "").toLowerCase() ||
+    ((process.env.NODE_ENV ?? "development") === "production" ? "ses" : "console"),
   ses: {
     region: process.env.SES_REGION ?? "eu-central-1",
     fromAddress: process.env.SES_FROM_ADDRESS ?? "",
+    // Leer lassen, wenn die AWS-Credential-Chain genutzt wird (z.B.
+    // AWS_PROFILE=lilapixel lokal oder Vercel-Env in Produktion).
     accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
   },
@@ -530,7 +537,13 @@ SESSION_MAX_DAYS=30
 LOGIN_TOKEN_TTL_MINUTES=15
 APP_BASE_URL=http://localhost:3000
 
-# AWS SES (eu-central-1)
+# E-Mail-Transport: 'console' (Dev, schreibt in die Server-Konsole) oder 'ses'
+MAIL_TRANSPORT=console
+
+# AWS SES (eu-central-1). Lokal bevorzugt über das AWS-Profil:
+#   export AWS_PROFILE=lilapixel
+# Dann AWS_ACCESS_KEY_ID/SECRET leer lassen (Credential-Chain greift).
+# Auf Vercel: echte Keys als Env-Variablen setzen.
 SES_REGION=eu-central-1
 SES_FROM_ADDRESS=klara@grundschule-xy.de
 AWS_ACCESS_KEY_ID=
@@ -1208,9 +1221,14 @@ import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import { config } from "../config.js";
 
 export function createSesMailer(): Mailer {
+  // Statische Keys nur nutzen, wenn beide gesetzt sind; sonst die
+  // AWS-Credential-Chain (AWS_PROFILE=lilapixel lokal, Vercel-Env in Prod).
+  const hasStaticCreds = Boolean(config.ses.accessKeyId && config.ses.secretAccessKey);
   const client = new SESv2Client({
     region: config.ses.region,
-    credentials: { accessKeyId: config.ses.accessKeyId, secretAccessKey: config.ses.secretAccessKey },
+    ...(hasStaticCreds
+      ? { credentials: { accessKeyId: config.ses.accessKeyId, secretAccessKey: config.ses.secretAccessKey } }
+      : {}),
   });
   return {
     async sendLoginEmail(to, code, link) {
@@ -1442,8 +1460,7 @@ import { registerAuthRoutes } from "./auth/routes.js";
 /** Baut die echten Adapter und liefert BuildOptions für buildApp(). */
 export async function defaultRuntime(): Promise<BuildOptions> {
   const repo = createPostgresAuthRepo();
-  const mailer = config.ses.fromAddress && config.ses.accessKeyId
-    ? createSesMailer() : createConsoleMailer();
+  const mailer = config.mailTransport === "ses" ? createSesMailer() : createConsoleMailer();
   const service = createAuthService({
     repo, mailer, allowedDomains: config.allowedDomains,
     tokenTtlMinutes: config.tokenTtlMinutes, appBaseUrl: config.appBaseUrl,
