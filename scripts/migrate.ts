@@ -7,7 +7,9 @@ import "dotenv/config";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dir = path.resolve(__dirname, "../migrations");
 
-const sql = postgres(process.env.DATABASE_URL!, { ssl: "require", max: 1 });
+if (!process.env.DATABASE_URL) { console.error("DATABASE_URL nicht gesetzt"); process.exit(1); }
+
+const sql = postgres(process.env.DATABASE_URL, { ssl: "require", max: 1 });
 
 const files = readdirSync(dir).filter((f) => f.endsWith(".sql")).sort();
 for (const file of files) {
