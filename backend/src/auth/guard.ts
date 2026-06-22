@@ -23,13 +23,13 @@ export function makeGuards(findUserById: (id: string) => Promise<User | null>) {
       await reply.code(401).send({ error: "unauthenticated" });
       return;
     }
-    (req as unknown as Record<string, unknown>).user = user;
+    req.user = user;
   }
 
   async function requireAdmin(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     await requireUser(req, reply);
     if (reply.sent) return;
-    const user = (req as unknown as Record<string, unknown>).user as User;
+    const user = req.user!;
     if (user.role !== "admin") {
       await reply.code(403).send({ error: "forbidden" });
     }
