@@ -1,5 +1,5 @@
 import type { Sql } from "postgres";
-import type { User, LoginTokenRow } from "../types.js";
+import type { User, UserRole, UserStatus, LoginTokenRow } from "../types.js";
 import { MAX_CODE_ATTEMPTS } from "./tokens.js";
 
 export interface NewLoginToken {
@@ -20,6 +20,9 @@ export interface AuthRepo {
   findActiveTokenByLinkHash(linkHash: string): Promise<LoginTokenRow | null>;
   markTokenUsed(id: string): Promise<void>;
   incrementCodeAttempts(id: string): Promise<void>;
+  listUsers(): Promise<User[]>;
+  upsertActiveUser(email: string, role: UserRole): Promise<User>;
+  updateUser(id: string, data: { status?: UserStatus; role?: UserRole }): Promise<User | null>;
 }
 
 // Re-export MAX_CODE_ATTEMPTS so callers only need one import point.
@@ -103,6 +106,35 @@ export function createPostgresAuthRepo(sql: SqlTag): AuthRepo {
 
     async incrementCodeAttempts(id) {
       await sql`update login_tokens set attempts = attempts + 1 where id = ${id}`;
+    },
+
+    async listUsers() {
+      const rows = await sql<Record<string, unknown>[]>`SELECT * FROM users ORDER BY created_at ASC`;
+      return rows.map(mapUser);
+    },
+
+    async upsertActiveUser(email, role) {
+      const rows = await sql<Record<string, unknown>[]>`
+        INSERT INTO users (email, role, status)
+        VALUES (${email}, ${role}, 'active')
+        ON CONFLICT (email) DO UPDATE SET status = 'active', role = ${role}
+        RETURNING *`;
+      return mapUser(rows[0]);
+    },
+
+    async updateUser(id, data) {
+      const updates: Record<string, unknown> = {};
+      if (data.status !== undefined) updates.status = data.status;
+      if (data.role !== undefined) updates.role = data.role;
+
+      if (Object.keys(updates).length === 0) {
+        const rows = await sql<Record<string, unknown>[]>`SELECT * FROM users WHERE id = ${id}`;
+        return rows.length ? mapUser(rows[0]) : null;
+      }
+
+      const rows = await sql<Record<string, unknown>[]>`
+        UPDATE users SET ${sql(updates)} WHERE id = ${id} RETURNING *`;
+      return rows.length ? mapUser(rows[0]) : null;
     },
   };
 }

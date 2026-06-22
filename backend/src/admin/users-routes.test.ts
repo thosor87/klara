@@ -1,0 +1,268 @@
+import { describe, it, expect } from "vitest";
+import Fastify, { type FastifyRequest, type FastifyReply } from "fastify";
+import fastifyCookie from "@fastify/cookie";
+import type { User } from "../types.js";
+import type { AuthRepo } from "../auth/repo.js";
+import { registerAdminUserRoutes } from "./users-routes.js";
+
+// ---------------------------------------------------------------------------
+// Fixtures
+// ---------------------------------------------------------------------------
+
+const ADMIN: User = {
+  id: "u-admin",
+  email: "admin@grundschule.de",
+  role: "admin",
+  status: "active",
+  createdAt: "2024-01-01",
+};
+
+const MEMBER: User = {
+  id: "u-member",
+  email: "member@grundschule.de",
+  role: "member",
+  status: "active",
+  createdAt: "2024-01-01",
+};
+
+// ---------------------------------------------------------------------------
+// Fakes
+// ---------------------------------------------------------------------------
+
+function fakeAuthRepo(over: Partial<AuthRepo> = {}): AuthRepo {
+  return {
+    findUserByEmail: async () => null,
+    findUserById: async () => null,
+    createPendingUser: async (email) => ({
+      id: "u-new",
+      email,
+      role: "member",
+      status: "pending",
+      createdAt: "x",
+    }),
+    insertLoginToken: async () => {},
+    findLatestActiveToken: async () => null,
+    findActiveTokenByLinkHash: async () => null,
+    markTokenUsed: async () => {},
+    incrementCodeAttempts: async () => {},
+    listUsers: async () => [],
+    upsertActiveUser: async (email, role) => ({
+      id: "u-new",
+      email,
+      role,
+      status: "active",
+      createdAt: "x",
+    }),
+    updateUser: async () => null,
+    ...over,
+  };
+}
+
+async function makeApp(authRepo: AuthRepo, user: User | null) {
+  const app = Fastify();
+  await app.register(fastifyCookie, { secret: "test-secret" });
+
+  const requireAdmin = async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    if (!user) {
+      await reply.code(401).send({ error: "unauthenticated" });
+      return;
+    }
+    if (user.role !== "admin") {
+      await reply.code(403).send({ error: "forbidden" });
+      return;
+    }
+    req.user = user;
+  };
+
+  registerAdminUserRoutes(app, { authRepo, requireAdmin });
+  await app.ready();
+  return app;
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/users
+// ---------------------------------------------------------------------------
+
+describe("GET /api/admin/users", () => {
+  it("admin → 200 + user list", async () => {
+    const repo = fakeAuthRepo({ listUsers: async () => [ADMIN, MEMBER] });
+    const app = await makeApp(repo, ADMIN);
+
+    const res = await app.inject({ method: "GET", url: "/api/admin/users" });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as User[];
+    expect(body).toHaveLength(2);
+    expect(body[0].id).toBe(ADMIN.id);
+    expect(body[1].id).toBe(MEMBER.id);
+  });
+
+  it("member → 403", async () => {
+    const app = await makeApp(fakeAuthRepo(), MEMBER);
+    const res = await app.inject({ method: "GET", url: "/api/admin/users" });
+    expect(res.statusCode).toBe(403);
+    expect(res.json()).toEqual({ error: "forbidden" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/users
+// ---------------------------------------------------------------------------
+
+describe("POST /api/admin/users", () => {
+  it("admin creates user → 201 + user", async () => {
+    const repo = fakeAuthRepo({
+      upsertActiveUser: async (email, role) => ({
+        id: "u-created",
+        email,
+        role,
+        status: "active",
+        createdAt: "x",
+      }),
+    });
+    const app = await makeApp(repo, ADMIN);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/users",
+      payload: { email: "new@grundschule.de", role: "admin" },
+    });
+
+    expect(res.statusCode).toBe(201);
+    const body = res.json() as User;
+    expect(body.id).toBe("u-created");
+    expect(body.email).toBe("new@grundschule.de");
+    expect(body.role).toBe("admin");
+    expect(body.status).toBe("active");
+  });
+
+  it("missing email → 400", async () => {
+    const app = await makeApp(fakeAuthRepo(), ADMIN);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/users",
+      payload: { role: "member" },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "email is required" });
+  });
+
+  it("member → 403", async () => {
+    const app = await makeApp(fakeAuthRepo(), MEMBER);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/users",
+      payload: { email: "x@grundschule.de" },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json()).toEqual({ error: "forbidden" });
+  });
+
+  it("defaults to role='member' when role not specified", async () => {
+    let capturedRole: string | undefined;
+    const repo = fakeAuthRepo({
+      upsertActiveUser: async (email, role) => {
+        capturedRole = role;
+        return { id: "u-new", email, role, status: "active", createdAt: "x" };
+      },
+    });
+    const app = await makeApp(repo, ADMIN);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/users",
+      payload: { email: "x@grundschule.de" },
+    });
+
+    expect(res.statusCode).toBe(201);
+    expect(capturedRole).toBe("member");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PATCH /api/admin/users/:id
+// ---------------------------------------------------------------------------
+
+describe("PATCH /api/admin/users/:id", () => {
+  it("admin updates user → 200 + updated user", async () => {
+    const updated: User = { ...MEMBER, status: "disabled" };
+    const repo = fakeAuthRepo({ updateUser: async () => updated });
+    const app = await makeApp(repo, ADMIN);
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/admin/users/${MEMBER.id}`,
+      payload: { status: "disabled" },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as User;
+    expect(body.status).toBe("disabled");
+  });
+
+  it("unknown id → 404", async () => {
+    const repo = fakeAuthRepo({ updateUser: async () => null });
+    const app = await makeApp(repo, ADMIN);
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: "/api/admin/users/nonexistent",
+      payload: { status: "disabled" },
+    });
+
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toEqual({ error: "not found" });
+  });
+
+  it("member → 403", async () => {
+    const app = await makeApp(fakeAuthRepo(), MEMBER);
+    const res = await app.inject({
+      method: "PATCH",
+      url: "/api/admin/users/some-id",
+      payload: { status: "disabled" },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json()).toEqual({ error: "forbidden" });
+  });
+
+  it("cannot_modify_self: disabling own account → 400", async () => {
+    const app = await makeApp(fakeAuthRepo(), ADMIN);
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/admin/users/${ADMIN.id}`,
+      payload: { status: "disabled" },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "cannot_modify_self" });
+  });
+
+  it("cannot_modify_self: demoting own account admin→member → 400", async () => {
+    const app = await makeApp(fakeAuthRepo(), ADMIN);
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/admin/users/${ADMIN.id}`,
+      payload: { role: "member" },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "cannot_modify_self" });
+  });
+
+  it("admin can patch own id with role='admin' (no-op) → 200", async () => {
+    const repo = fakeAuthRepo({ updateUser: async () => ADMIN });
+    const app = await makeApp(repo, ADMIN);
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/admin/users/${ADMIN.id}`,
+      payload: { role: "admin" },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as User;
+    expect(body.role).toBe("admin");
+  });
+});

@@ -38,6 +38,20 @@ class FakeRepo implements AuthRepo {
   async incrementCodeAttempts(id: string) {
     const t = this.tokens.find((x) => x.id === id); if (t) t.attempts++;
   }
+  async listUsers() { return [...this.users]; }
+  async upsertActiveUser(email: string, role: import("../types.js").UserRole): Promise<User> {
+    const existing = this.users.find((u) => u.email === email);
+    if (existing) { existing.status = "active"; existing.role = role; return existing; }
+    const u: User = { id: `u${++this.seq}`, email, role, status: "active", createdAt: new Date(0).toISOString() };
+    this.users.push(u); return u;
+  }
+  async updateUser(id: string, data: { status?: import("../types.js").UserStatus; role?: import("../types.js").UserRole }): Promise<User | null> {
+    const u = this.users.find((x) => x.id === id);
+    if (!u) return null;
+    if (data.status !== undefined) u.status = data.status;
+    if (data.role !== undefined) u.role = data.role;
+    return u;
+  }
 }
 class FakeMailer implements Mailer {
   sent: { to: string; code: string; link: string }[] = [];
