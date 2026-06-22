@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizeEmail, isDomainAllowed, decideLoginAction } from "./eligibility.js";
+import { normalizeEmail, isDomainAllowed, decideLoginAction, isValidEmailFormat } from "./eligibility.js";
 
 describe("normalizeEmail", () => {
   it("trimmt und lowercased", () => {
@@ -38,5 +38,28 @@ describe("decideLoginAction", () => {
   it("fremde Domain ohne Account → deny", () => {
     expect(decideLoginAction({ email: "x@gmail.com", allowedDomains: domains,
       existingUser: null }).action).toBe("deny");
+  });
+  it("ungültiges E-Mail-Format → deny, auch wenn Domain passen würde", () => {
+    expect(decideLoginAction({ email: "not-an-email", allowedDomains: domains,
+      existingUser: null }).action).toBe("deny");
+  });
+  it("E-Mail ohne TLD-Punkt → deny (z.B. a@b)", () => {
+    expect(decideLoginAction({ email: "a@b", allowedDomains: domains,
+      existingUser: null }).action).toBe("deny");
+  });
+});
+
+describe("isValidEmailFormat", () => {
+  it("akzeptiert gültige E-Mail", () => {
+    expect(isValidEmailFormat("user@example.com")).toBe(true);
+  });
+  it("lehnt Adresse ohne @ ab", () => {
+    expect(isValidEmailFormat("not-an-email")).toBe(false);
+  });
+  it("lehnt Adresse ohne Punkt in der Domain ab", () => {
+    expect(isValidEmailFormat("a@b")).toBe(false);
+  });
+  it("lehnt Adresse mit Leerzeichen ab", () => {
+    expect(isValidEmailFormat("a b@example.com")).toBe(false);
   });
 });

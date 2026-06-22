@@ -16,4 +16,5 @@ export interface LoginTokenRow {
   linkTokenHash: string;
   expiresAt: string;
   usedAt: string | null;
+  attempts: number;
 }

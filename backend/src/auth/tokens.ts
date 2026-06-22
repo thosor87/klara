@@ -1,5 +1,7 @@
 import { randomInt, randomBytes, createHash, timingSafeEqual } from "node:crypto";
 
+export const MAX_CODE_ATTEMPTS = 5;
+
 export function generateCode(): string {
   return String(randomInt(0, 1_000_000)).padStart(6, "0");
 }

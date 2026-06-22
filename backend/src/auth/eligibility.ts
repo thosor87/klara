@@ -13,6 +13,10 @@ export function isDomainAllowed(email: string, allowedDomains: string[]): boolea
   return allowedDomains.includes(emailDomain(email));
 }
 
+export function isValidEmailFormat(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 export type LoginAction = "send_login" | "create_pending" | "noop" | "deny";
 
 export interface EligibilityInput {
@@ -30,6 +34,7 @@ export interface EligibilityInput {
  * - kein Account, Domain nicht erlaubt → deny
  */
 export function decideLoginAction(input: EligibilityInput): { action: LoginAction } {
+  if (!isValidEmailFormat(input.email)) return { action: "deny" };
   const { existingUser } = input;
   if (existingUser) {
     if (existingUser.status === "active") return { action: "send_login" };

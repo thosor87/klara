@@ -35,7 +35,10 @@ export function createAuthService(deps: AuthServiceDeps): AuthService {
   async function resolveActiveByToken(email: string, secret: string, field: "codeHash" | "linkTokenHash"): Promise<User | null> {
     const tok = await repo.findLatestActiveToken(email);
     if (!tok) return null;
-    if (!verifySecret(secret, tok[field])) return null;
+    if (!verifySecret(secret, tok[field])) {
+      await repo.incrementCodeAttempts(tok.id);
+      return null;
+    }
     await repo.markTokenUsed(tok.id);
     const user = await repo.findUserByEmail(email);
     if (!user || user.status !== "active") return null;

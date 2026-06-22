@@ -13,6 +13,7 @@ create table if not exists login_tokens (
   link_token_hash text not null,
   expires_at      timestamptz not null,
   used_at         timestamptz,
+  attempts        int not null default 0,
   created_at      timestamptz not null default now()
 );
 

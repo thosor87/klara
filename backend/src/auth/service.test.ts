@@ -3,6 +3,7 @@ import type { User, LoginTokenRow } from "../types.js";
 import type { AuthRepo, NewLoginToken } from "./repo.js";
 import type { Mailer } from "./mailer.js";
 import { createAuthService } from "./service.js";
+import { MAX_CODE_ATTEMPTS } from "./tokens.js";
 
 // --- In-Memory-Fakes ---
 class FakeRepo implements AuthRepo {
@@ -19,11 +20,11 @@ class FakeRepo implements AuthRepo {
   async insertLoginToken(t: NewLoginToken) {
     this.tokens.push({ id: `t${++this.seq}`, email: t.email, codeHash: t.codeHash,
       linkTokenHash: t.linkTokenHash, expiresAt: t.expiresAt.toISOString(), usedAt: null,
-      _expires: t.expiresAt });
+      attempts: 0, _expires: t.expiresAt });
   }
   async findLatestActiveToken(email: string) {
     const now = Date.now();
-    const list = this.tokens.filter((t) => t.email === email && !t.usedAt && t._expires.getTime() > now);
+    const list = this.tokens.filter((t) => t.email === email && !t.usedAt && t._expires.getTime() > now && t.attempts < MAX_CODE_ATTEMPTS);
     return list.length ? list[list.length - 1] : null;
   }
   async findActiveTokenByLinkHash(linkHash: string) {
@@ -33,6 +34,9 @@ class FakeRepo implements AuthRepo {
   }
   async markTokenUsed(id: string) {
     const t = this.tokens.find((x) => x.id === id); if (t) t.usedAt = new Date().toISOString();
+  }
+  async incrementCodeAttempts(id: string) {
+    const t = this.tokens.find((x) => x.id === id); if (t) t.attempts++;
   }
 }
 class FakeMailer implements Mailer {
@@ -106,6 +110,18 @@ describe("verifyCode", () => {
     const code = mailer.sent[0].code;
     await svc.verifyCode("a@grundschule-xy.de", code);
     expect(await svc.verifyCode("a@grundschule-xy.de", code)).toBeNull();
+  });
+
+  it("nach 5 falschen Versuchen wird auch der korrekte Code abgelehnt (Token gesperrt)", async () => {
+    repo.users.push({ id: "u1", email: "a@grundschule-xy.de", role: "member",
+      status: "active", createdAt: "x" });
+    const svc = makeService(repo, mailer);
+    await svc.requestLogin("a@grundschule-xy.de");
+    const correctCode = mailer.sent[0].code;
+    for (let i = 0; i < MAX_CODE_ATTEMPTS; i++) {
+      await svc.verifyCode("a@grundschule-xy.de", "000000");
+    }
+    expect(await svc.verifyCode("a@grundschule-xy.de", correctCode)).toBeNull();
   });
 });
 
