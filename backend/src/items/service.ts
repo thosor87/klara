@@ -70,7 +70,7 @@ export function createItemsService(deps: ItemsServiceDeps): ItemsService {
         throw new AppError("upload_incomplete", "Both objects must be uploaded to S3 first");
       }
 
-      return itemsRepo.insertPending({
+      const item = await itemsRepo.insertPending({
         id: itemId,
         folderId,
         s3Key: webKey,
@@ -78,9 +78,22 @@ export function createItemsService(deps: ItemsServiceDeps): ItemsService {
         caption: caption ?? "",
         uploadedBy: userId,
       });
+
+      if (!item) {
+        throw new AppError("already_confirmed", "Item has already been confirmed");
+      }
+
+      return item;
     },
 
     async listFolderItems(folderId, { isAdmin }) {
+      if (!isAdmin) {
+        const folder = await foldersRepo.findById(folderId);
+        if (!folder || !folder.enabled) {
+          throw new AppError("folder_not_found", "Folder not found or not enabled");
+        }
+      }
+
       const statuses: ItemStatus[] = isAdmin
         ? ["pending", "approved", "trashed"]
         : ["approved"];

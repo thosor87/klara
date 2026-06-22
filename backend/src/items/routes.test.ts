@@ -186,6 +186,25 @@ describe("POST /api/folders/:folderId/items", () => {
     expect(res.statusCode).toBe(400);
     expect(res.json()).toEqual({ error: "upload_incomplete" });
   });
+
+  // Fix 2: already_confirmed → 409 { error: 'already_confirmed' }
+  it("already_confirmed AppError → 409 { error: 'already_confirmed' }", async () => {
+    const service = fakeService({
+      confirmUpload: async () => {
+        throw new AppError("already_confirmed", "Item already confirmed");
+      },
+    });
+    const app = await makeApp(service, MEMBER);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/folders/f1/items",
+      payload: { itemId: "item1" },
+    });
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toEqual({ error: "already_confirmed" });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -209,6 +228,21 @@ describe("GET /api/folders/:folderId/items", () => {
     await app.inject({ method: "GET", url: "/api/folders/f1/items" });
 
     expect(listFolderItems).toHaveBeenCalledWith("f1", { isAdmin: true });
+  });
+
+  // Fix 1: folder_not_found from service → 404 { error: 'folder_not_found' }
+  it("folder_not_found AppError → 404 { error: 'folder_not_found' }", async () => {
+    const service = fakeService({
+      listFolderItems: async () => {
+        throw new AppError("folder_not_found", "Folder not found or not enabled");
+      },
+    });
+    const app = await makeApp(service, MEMBER);
+
+    const res = await app.inject({ method: "GET", url: "/api/folders/f-dis/items" });
+
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toEqual({ error: "folder_not_found" });
   });
 });
 

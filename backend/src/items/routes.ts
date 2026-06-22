@@ -57,6 +57,9 @@ export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): 
         if (err instanceof AppError && err.code === "upload_incomplete") {
           return reply.code(400).send({ error: "upload_incomplete" });
         }
+        if (err instanceof AppError && err.code === "already_confirmed") {
+          return reply.code(409).send({ error: "already_confirmed" });
+        }
         throw err;
       }
     },
@@ -67,10 +70,17 @@ export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): 
     "/api/folders/:folderId/items",
     { preHandler: requireUser },
     async (req, reply) => {
-      const items = await itemsService.listFolderItems(req.params.folderId, {
-        isAdmin: req.user!.role === "admin",
-      });
-      return reply.send(items);
+      try {
+        const items = await itemsService.listFolderItems(req.params.folderId, {
+          isAdmin: req.user!.role === "admin",
+        });
+        return reply.send(items);
+      } catch (err) {
+        if (err instanceof AppError && err.code === "folder_not_found") {
+          return reply.code(404).send({ error: "folder_not_found" });
+        }
+        throw err;
+      }
     },
   );
 

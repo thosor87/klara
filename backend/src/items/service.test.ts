@@ -62,7 +62,7 @@ function fakeFoldersRepo(overrides: Partial<FoldersRepo> = {}): FoldersRepo {
 
 function fakeItemsRepo(overrides: Partial<ItemsRepo> = {}): ItemsRepo {
   return {
-    insertPending: async () => ITEM,
+    insertPending: async () => ITEM,  // returns Item (not null = no conflict)
     listByFolder: async () => [],
     listPending: async () => [],
     setStatusApproved: async (ids) => ids.length,
@@ -214,7 +214,7 @@ describe("confirmUpload", () => {
 
   it("confirmUpload throws folder_not_found when folder is disabled", async () => {
     const svc = createItemsService({
-      itemsRepo: fakeItemsRepo({ insertPending: vi.fn() }),
+      itemsRepo: fakeItemsRepo({ insertPending: vi.fn(async () => ITEM) }),
       foldersRepo: fakeFoldersRepo({ findById: async () => DISABLED_FOLDER }),
       storage: fakeStorage({ headExists: async () => true }),
     });
@@ -223,11 +223,26 @@ describe("confirmUpload", () => {
 
   it("confirmUpload throws folder_not_found when folder not found", async () => {
     const svc = createItemsService({
-      itemsRepo: fakeItemsRepo({ insertPending: vi.fn() }),
+      itemsRepo: fakeItemsRepo({ insertPending: vi.fn(async () => ITEM) }),
       foldersRepo: fakeFoldersRepo({ findById: async () => null }),
       storage: fakeStorage({ headExists: async () => true }),
     });
     await expect(svc.confirmUpload("missing", "item1", "", "u1")).rejects.toMatchObject({ code: "folder_not_found" });
+  });
+
+  // Fix 2: duplicate confirm returns already_confirmed error
+  it("second confirmUpload for same itemId throws already_confirmed", async () => {
+    // insertPending returns null when there's a conflict (ON CONFLICT DO NOTHING)
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo({ insertPending: async () => null }),
+      foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER }),
+      storage: fakeStorage(),
+    });
+
+    await expect(svc.confirmUpload("f1", "item1", "", "u1")).rejects.toMatchObject({
+      name: "AppError",
+      code: "already_confirmed",
+    });
   });
 });
 
@@ -242,7 +257,7 @@ describe("listFolderItems", () => {
     const listByFolder = vi.fn(async () => [APPROVED_ITEM]);
     const svc = createItemsService({
       itemsRepo: fakeItemsRepo({ listByFolder }),
-      foldersRepo: fakeFoldersRepo(),
+      foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER }),
       storage: fakeStorage(),
     });
 
@@ -270,7 +285,7 @@ describe("listFolderItems", () => {
   it("attaches thumbUrl and webUrl to each item", async () => {
     const svc = createItemsService({
       itemsRepo: fakeItemsRepo({ listByFolder: async () => [APPROVED_ITEM] }),
-      foldersRepo: fakeFoldersRepo(),
+      foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER }),
       storage: fakeStorage(),
     });
 
@@ -279,6 +294,59 @@ describe("listFolderItems", () => {
     expect(result).toHaveLength(1);
     expect(result[0].thumbUrl).toBe(`https://s3.example.com/get/${APPROVED_ITEM.thumbKey}`);
     expect(result[0].webUrl).toBe(`https://s3.example.com/get/${APPROVED_ITEM.s3Key}`);
+  });
+
+  // Fix 1: member listing must respect folder enabled-state
+  it("member listing a disabled folder throws folder_not_found", async () => {
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo(),
+      foldersRepo: fakeFoldersRepo({ findById: async () => DISABLED_FOLDER }),
+      storage: fakeStorage(),
+    });
+
+    await expect(svc.listFolderItems("f-dis", { isAdmin: false })).rejects.toMatchObject({
+      name: "AppError",
+      code: "folder_not_found",
+    });
+  });
+
+  it("member listing a non-existent folder throws folder_not_found", async () => {
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo(),
+      foldersRepo: fakeFoldersRepo({ findById: async () => null }),
+      storage: fakeStorage(),
+    });
+
+    await expect(svc.listFolderItems("f-missing", { isAdmin: false })).rejects.toMatchObject({
+      name: "AppError",
+      code: "folder_not_found",
+    });
+  });
+
+  it("member listing an enabled folder returns approved items", async () => {
+    const listByFolder = vi.fn(async () => [APPROVED_ITEM]);
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo({ listByFolder }),
+      foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER }),
+      storage: fakeStorage(),
+    });
+
+    const result = await svc.listFolderItems("f1", { isAdmin: false });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(APPROVED_ITEM.id);
+  });
+
+  it("admin listing a disabled folder still succeeds", async () => {
+    const listByFolder = vi.fn(async () => []);
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo({ listByFolder }),
+      foldersRepo: fakeFoldersRepo({ findById: async () => DISABLED_FOLDER }),
+      storage: fakeStorage(),
+    });
+
+    await expect(svc.listFolderItems("f-dis", { isAdmin: true })).resolves.toEqual([]);
+    expect(listByFolder).toHaveBeenCalled();
   });
 });
 

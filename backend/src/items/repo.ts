@@ -31,7 +31,7 @@ export interface ItemsRepo {
     thumbKey: string;
     caption: string;
     uploadedBy: string;
-  }): Promise<Item>;
+  }): Promise<Item | null>;
   listByFolder(folderId: string, statuses: ItemStatus[]): Promise<Item[]>;
   listPending(): Promise<ItemWithFolderName[]>;
   setStatusApproved(ids: string[], approvedBy: string): Promise<number>;
@@ -68,8 +68,9 @@ export function createPostgresItemsRepo(sql: SqlTag): ItemsRepo {
       const rows = await sql<Record<string, unknown>[]>`
         INSERT INTO items (id, folder_id, s3_key, thumb_key, caption, uploaded_by)
         VALUES (${data.id}, ${data.folderId}, ${data.s3Key}, ${data.thumbKey}, ${data.caption}, ${data.uploadedBy})
+        ON CONFLICT (id) DO NOTHING
         RETURNING *`;
-      return mapItem(rows[0]);
+      return rows.length ? mapItem(rows[0]) : null;
     },
 
     async listByFolder(folderId, statuses) {
