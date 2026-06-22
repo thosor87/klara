@@ -96,7 +96,7 @@ export function createPostgresItemsRepo(sql: SqlTag): ItemsRepo {
       const rows = await sql<{ id: string }[]>`
         UPDATE items
         SET status = 'approved', approved_by = ${approvedBy}
-        WHERE id = ANY(${sql.array(ids)})
+        WHERE id = ANY(${sql.array(ids)}) AND status = 'pending'
         RETURNING id`;
       return rows.length;
     },
@@ -106,7 +106,7 @@ export function createPostgresItemsRepo(sql: SqlTag): ItemsRepo {
       const rows = await sql<{ id: string }[]>`
         UPDATE items
         SET status = 'trashed', trashed_at = now()
-        WHERE id = ANY(${sql.array(ids)})
+        WHERE id = ANY(${sql.array(ids)}) AND status = 'pending'
         RETURNING id`;
       return rows.length;
     },

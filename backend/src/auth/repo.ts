@@ -114,10 +114,12 @@ export function createPostgresAuthRepo(sql: SqlTag): AuthRepo {
     },
 
     async upsertActiveUser(email, role) {
+      // On conflict: activate the existing user but preserve their current role.
+      // Callers who want to change role must use updateUser explicitly.
       const rows = await sql<Record<string, unknown>[]>`
         insert into users (email, role, status)
         values (${email}, ${role}, 'active')
-        on conflict (email) do update set status = 'active', role = ${role}
+        on conflict (email) do update set status = 'active'
         returning *`;
       return mapUser(rows[0]);
     },
