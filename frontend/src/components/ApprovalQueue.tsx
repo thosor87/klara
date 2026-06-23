@@ -1,18 +1,20 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { api, type PendingItem } from "../api";
+import { ApprovalLightbox } from "./ApprovalLightbox";
 
 type OutletCtx = { refreshPending: () => void };
 
 export function ApprovalQueue() {
   const { refreshPending } = useOutletContext<OutletCtx>();
-  const onCountChange = (_n: number) => refreshPending();
   const [items, setItems] = useState<PendingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  // Fullscreen review: index into `items`, or -1 when closed.
+  const [reviewIndex, setReviewIndex] = useState(-1);
 
   function load() {
     setLoading(true);
@@ -21,7 +23,7 @@ export function ApprovalQueue() {
       .then((its) => {
         setItems(its);
         setLoading(false);
-        onCountChange(its.length);
+        refreshPending();
       })
       .catch(() => { setError(true); setLoading(false); });
   }
@@ -74,42 +76,78 @@ export function ApprovalQueue() {
     }
   }
 
+  /** Act on a single photo from the fullscreen review, then advance. */
+  async function reviewAct(id: string, action: "approve" | "reject") {
+    if (busy) return;
+    setBusy(true); setMsg("");
+    try {
+      if (action === "approve") await api.approveItems([id]);
+      else await api.rejectItems([id]);
+
+      const remaining = items.filter((i) => i.id !== id);
+      setItems(remaining);
+      setSelected((prev) => { const n = new Set(prev); n.delete(id); return n; });
+      refreshPending();
+
+      if (!remaining.length) {
+        setReviewIndex(-1);
+      } else {
+        // Stay at the same slot (now the next photo) but clamp to the end.
+        setReviewIndex((i) => Math.min(i, remaining.length - 1));
+      }
+    } catch {
+      setMsg(action === "approve" ? "Fehler bei der Freigabe." : "Fehler beim Ablehnen.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (loading) return <p className="muted">Lädt Freigabe-Warteschlange …</p>;
   if (error) return <p className="err">Freigabe-Liste konnte nicht geladen werden.</p>;
+
+  const allSelected = selected.size === items.length && items.length > 0;
 
   return (
     <div className="approval-queue">
       <div className="approval-header">
         <h2>Freigabe-Warteschlange</h2>
-        {items.length > 0 && (
-          <div className="approval-actions">
-            <label className="select-all-label">
-              <input type="checkbox"
-                checked={selected.size === items.length && items.length > 0}
-                onChange={toggleAll} />
-              Alle auswählen
-            </label>
-            <button onClick={handleApprove} disabled={busy || !selected.size} className="btn-approve">
-              Freigeben ({selected.size})
-            </button>
-            <button onClick={handleReject} disabled={busy || !selected.size} className="btn-reject">
-              Ablehnen ({selected.size})
-            </button>
-          </div>
-        )}
       </div>
+
+      {items.length > 0 && (
+        <div className="approval-bar">
+          <span className="approval-bar-count">
+            {selected.size} ausgewählt
+          </span>
+          <button className="btn-ghost-light" onClick={toggleAll}>
+            {allSelected ? "Abwählen" : "Alle auswählen"}
+          </button>
+          <span className="spacer" />
+          <button onClick={handleApprove} disabled={busy || !selected.size} className="btn-approve">
+            Freigeben
+          </button>
+          <button onClick={handleReject} disabled={busy || !selected.size} className="btn-reject">
+            Ablehnen
+          </button>
+        </div>
+      )}
 
       {msg && <p className="approval-msg">{msg}</p>}
 
       {!items.length && <p className="muted">Keine Fotos warten auf Freigabe.</p>}
 
       <div className="approval-grid">
-        {items.map((item) => (
+        {items.map((item, i) => (
           <div key={item.id}
-            className={`approval-item${selected.has(item.id) ? " selected" : ""}`}
-            onClick={() => toggleItem(item.id)}>
+            className={`approval-item${selected.has(item.id) ? " selected" : ""}`}>
             <div className="approval-thumb-wrap">
-              <img src={item.thumbUrl} alt={item.caption || "Foto"} loading="lazy" className="approval-thumb" />
+              <button
+                type="button"
+                className="approval-open-btn"
+                onClick={() => setReviewIndex(i)}
+                aria-label="Foto in Vollbild prüfen"
+              >
+                <img src={item.thumbUrl} alt={item.caption || "Foto"} loading="lazy" className="approval-thumb" />
+              </button>
               <input type="checkbox" className="approval-checkbox"
                 checked={selected.has(item.id)}
                 onChange={() => toggleItem(item.id)}
@@ -122,6 +160,18 @@ export function ApprovalQueue() {
           </div>
         ))}
       </div>
+
+      {reviewIndex >= 0 && items[reviewIndex] && (
+        <ApprovalLightbox
+          items={items}
+          index={reviewIndex}
+          busy={busy}
+          onIndexChange={setReviewIndex}
+          onApprove={(id) => reviewAct(id, "approve")}
+          onReject={(id) => reviewAct(id, "reject")}
+          onClose={() => setReviewIndex(-1)}
+        />
+      )}
     </div>
   );
 }
