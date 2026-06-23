@@ -7,9 +7,8 @@ import { FolderView } from "./components/FolderView";
 import { ApprovalQueue } from "./components/ApprovalQueue";
 import { AdminFolders } from "./components/AdminFolders";
 import { AdminUsers } from "./components/AdminUsers";
-import { AdminDomains, AdminClasses } from "./components/Settings";
+import { AdminClasses } from "./components/Settings";
 import { ReportsQueue } from "./components/ReportsQueue";
-import { Trash } from "./components/Trash";
 import { Footer } from "./components/Footer";
 import { Impressum } from "./components/Impressum";
 import { Datenschutz } from "./components/Datenschutz";
@@ -50,20 +49,12 @@ function AppRoutes({ me, onLogout }: { me: Me; onLogout: () => void }) {
           element={<RequireAdmin me={me}><ReportsQueue /></RequireAdmin>}
         />
         <Route
-          path="/papierkorb"
-          element={<RequireAdmin me={me}><Trash /></RequireAdmin>}
-        />
-        <Route
           path="/verwaltung/ordner"
           element={<RequireAdmin me={me}><AdminFolders /></RequireAdmin>}
         />
         <Route
           path="/verwaltung/nutzer"
           element={<RequireAdmin me={me}><AdminUsers /></RequireAdmin>}
-        />
-        <Route
-          path="/verwaltung/domains"
-          element={<RequireAdmin me={me}><AdminDomains /></RequireAdmin>}
         />
         <Route
           path="/verwaltung/klassen"

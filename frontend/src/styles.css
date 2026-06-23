@@ -399,6 +399,7 @@ button:disabled { opacity: .5; cursor: default; }
 
 /* ---------- Admin sections ---------- */
 .admin-section { display: flex; flex-direction: column; gap: .75rem; }
+.admin-trash-section { margin-top: 2.5rem; padding-top: 2rem; border-top: 1px solid var(--purple-line); }
 .admin-section-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; }
 .admin-section-header h2 { margin: 0; color: var(--purple); }
 .admin-folder-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .6rem; }
@@ -556,7 +557,10 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
 
 /* ---- Form fields (labelled select / date) ---- */
 .form-field { display: flex; flex-direction: column; gap: .25rem; margin: 0; }
-.form-label { font-size: .78rem; color: var(--ink-soft); font-weight: 600; }
+.form-label { font-size: .78rem; color: var(--ink-soft); font-weight: 600;
+  display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+.form-label-link { font-weight: 500; color: var(--purple); text-decoration: none; }
+.form-label-link:hover { text-decoration: underline; }
 .form-field select, .form-field input[type="date"] {
   width: 100%; margin: 0;
 }

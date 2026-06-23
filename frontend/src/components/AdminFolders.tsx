@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, type Folder, type ClassOption, type Item } from "../api";
 import { schoolYearOptions, formatDateRange } from "../dates";
+import { Trash } from "./Trash";
 
 type FormState = {
   name: string;
@@ -45,7 +47,10 @@ function FolderFormFields({
         </select>
       </label>
       <label className="form-field">
-        <span className="form-label">Klasse</span>
+        <span className="form-label">
+          Klasse
+          <Link to="/verwaltung/klassen" className="form-label-link">Klassen verwalten</Link>
+        </span>
         <select
           value={form.classLabel}
           onChange={(e) => setForm((p) => ({ ...p, classLabel: e.target.value }))}
@@ -424,6 +429,10 @@ export function AdminFolders() {
           onChosen={handleUpdated}
         />
       )}
+
+      <div className="admin-trash-section">
+        <Trash />
+      </div>
     </div>
   );
 }

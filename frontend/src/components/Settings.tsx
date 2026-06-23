@@ -64,7 +64,7 @@ export function DomainsCard() {
   return (
     <section className="settings-card">
       {dialog}
-      <h2>Erlaubte Domains</h2>
+      <h2>Erlaubte Login-Domains</h2>
       <p className="muted settings-hint">
         Adressen dieser Domains dürfen sich anmelden und erhalten einen Code. Alle anderen brauchen
         einen Allowlist-Eintrag unter Nutzer.
@@ -211,18 +211,6 @@ export function ClassesCard() {
         </ul>
       )}
     </section>
-  );
-}
-
-export function AdminDomains() {
-  return (
-    <div className="settings-page">
-      <div className="page-head">
-        <p className="page-kicker">Verwaltung</p>
-        <h1 className="page-title">Domains</h1>
-      </div>
-      <DomainsCard />
-    </div>
   );
 }
 
