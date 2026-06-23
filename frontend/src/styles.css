@@ -606,8 +606,10 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
   box-shadow: 0 0 0 3px var(--purple-ring, rgba(91,63,176,.18));
 }
 .form-field input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .6; }
-.form-row { display: flex; gap: .6rem; flex-wrap: wrap; }
-.form-row .form-field { flex: 1 1 140px; }
+.form-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+.form-row .form-field { flex: 0 0 auto; }
+/* Compact date inputs: a date only needs ~170px, no need to stretch full width */
+.form-row .form-field input[type="date"] { width: auto; min-width: 170px; }
 
 /* ---- Folder card cover (public list) ---- */
 .folder-cover {
