@@ -5,6 +5,8 @@ import { NavBar } from "./components/NavBar";
 import { FolderList } from "./components/FolderList";
 import { FolderView } from "./components/FolderView";
 import { ApprovalQueue } from "./components/ApprovalQueue";
+import { AdminFolders } from "./components/AdminFolders";
+import { AdminUsers } from "./components/AdminUsers";
 import { type View } from "./types";
 
 type Stage = "loading" | "email" | "code" | "in";
@@ -42,8 +44,8 @@ function AppShell({ me, onLogout }: { me: Me; onLogout: () => void }) {
         {view === "approval" && me.role === "admin" && (
           <ApprovalQueue onCountChange={setPendingCount} />
         )}
-        {view === "admin-folders" && me.role === "admin" && <div className="placeholder">Ordner verwalten (kommt gleich)</div>}
-        {view === "admin-users" && me.role === "admin" && <div className="placeholder">Nutzer-Verwaltung (kommt gleich)</div>}
+        {view === "admin-folders" && me.role === "admin" && <AdminFolders />}
+        {view === "admin-users" && me.role === "admin" && <AdminUsers />}
       </main>
     </div>
   );
