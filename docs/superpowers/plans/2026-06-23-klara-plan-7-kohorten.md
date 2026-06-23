@@ -48,7 +48,7 @@ alter table class_options add column if not exists start_year int;   -- Einschul
 ## Frontend
 | Stelle | Änderung |
 |---|---|
-| Album-Formular (`AdminFolders`) | **Schuljahr-Feld entfällt.** Klassen-Mehrfachauswahl zeigt nur `active`-Klassen (+ Legacy) mit berechnetem Label (z.B. „2m · 2025/26"). |
+| Album-Formular (`AdminFolders`) | **Schuljahr-Feld entfällt.** Klassen-Mehrfachauswahl zeigt nur `active`-Klassen (+ Legacy) mit berechnetem Label (z.B. „2m · 2025/26"). **Beim NEUEN Album** die eigene Klasse des Admins (`me.classId`) **vorauswählen** (Ändern/Ergänzen bleibt optional) — Lehrer ist i.d.R. einer Klasse zugeordnet, das spart Pflege. (`AdminFolders` liest `me` aus dem Outlet-Context.) |
 | Nutzer-Klasse (`AdminUsers`) | Dropdown zeigt `active`/`alumni`/Legacy mit berechnetem Label. |
 | Admin „Klassen" (`Settings`) | Verwaltung als **Kohorten**: anlegen mit **Zug** (Textfeld, leer = Regelklasse) + **Einschulungsjahr** (Dropdown der letzten ~6 Jahre). Liste zeigt berechnetes Label + Status-Pill (Aktiv / Ehemalige / Archiviert). Legacy-Klassen mit Hinweis „Einschulungsjahr setzen". |
 | Album-Anzeige | Statt `schoolYear`/`classLabel` die zugeordneten Klassen-Chips (berechnetes Label). |
