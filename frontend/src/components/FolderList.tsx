@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, type Folder } from "../api";
 
-export function FolderList({ onOpenFolder }: { onOpenFolder: (folder: Folder) => void }) {
+export function FolderList() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -14,20 +15,35 @@ export function FolderList({ onOpenFolder }: { onOpenFolder: (folder: Folder) =>
 
   if (loading) return <p className="muted">Lädt Ordner …</p>;
   if (error) return <p className="err">Ordner konnten nicht geladen werden.</p>;
-  if (!folders.length) return <p className="muted">Noch keine Ordner vorhanden.</p>;
 
   return (
-    <div className="folder-grid">
-      {folders.map((f) => (
-        <button key={f.id} className="folder-card" onClick={() => onOpenFolder(f)}>
-          <span className="folder-icon">📁</span>
-          <div className="folder-name">{f.name}</div>
-          {(f.schoolYear || f.classLabel) && (
-            <div className="folder-meta">{[f.schoolYear, f.classLabel].filter(Boolean).join(" · ")}</div>
-          )}
-          <div className="folder-count">{f.itemCount} Foto{f.itemCount !== 1 ? "s" : ""}</div>
-        </button>
-      ))}
-    </div>
+    <section className="folders-page">
+      <header className="page-head">
+        <p className="page-kicker">Unser Klassenalbum</p>
+        <h1 className="page-title">Ordner</h1>
+      </header>
+
+      {!folders.length ? (
+        <p className="muted empty-hint">Noch keine Ordner vorhanden.</p>
+      ) : (
+        <div className="folder-grid">
+          {folders.map((f, i) => (
+            <Link
+              key={f.id}
+              to={`/ordner/${f.id}`}
+              className="folder-card"
+              style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
+            >
+              <span className="folder-icon" aria-hidden="true">🌿</span>
+              <div className="folder-name">{f.name}</div>
+              {(f.schoolYear || f.classLabel) && (
+                <div className="folder-meta">{[f.schoolYear, f.classLabel].filter(Boolean).join(" · ")}</div>
+              )}
+              <div className="folder-count">{f.itemCount} Foto{f.itemCount !== 1 ? "s" : ""}</div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }

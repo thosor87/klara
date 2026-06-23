@@ -1,31 +1,26 @@
-import { type View } from "../types";
+import { NavLink } from "react-router-dom";
 
-export function NavBar({ role, view, onNav, pendingCount }: {
+export function NavBar({ role, pendingCount }: {
   role: "admin" | "member";
-  view: View;
-  onNav: (view: View) => void;
   pendingCount: number;
 }) {
+  const cls = ({ isActive }: { isActive: boolean }) =>
+    `nav-item${isActive ? " active" : ""}`;
+
   return (
-    <nav className="navbar">
-      <button className={`nav-item${view === "folders" ? " active" : ""}`} onClick={() => onNav("folders")}>
-        Ordner
-      </button>
+    <nav className="navbar" aria-label="Hauptnavigation">
+      <NavLink to="/" end className={cls}>Ordner</NavLink>
       {role === "admin" && (
-        <button className={`nav-item${view === "approval" ? " active" : ""}`} onClick={() => onNav("approval")}>
+        <NavLink to="/freigabe" className={cls}>
           Freigabe
           {pendingCount > 0 && <span className="badge">{pendingCount}</span>}
-        </button>
+        </NavLink>
       )}
       {role === "admin" && (
-        <button className={`nav-item${view === "admin-folders" ? " active" : ""}`} onClick={() => onNav("admin-folders")}>
-          Ordner verwalten
-        </button>
+        <NavLink to="/verwaltung/ordner" className={cls}>Ordner verwalten</NavLink>
       )}
       {role === "admin" && (
-        <button className={`nav-item${view === "admin-users" ? " active" : ""}`} onClick={() => onNav("admin-users")}>
-          Nutzer
-        </button>
+        <NavLink to="/verwaltung/nutzer" className={cls}>Nutzer</NavLink>
       )}
     </nav>
   );

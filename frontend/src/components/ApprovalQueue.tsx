@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { api, type PendingItem } from "../api";
 
-export function ApprovalQueue({ onCountChange }: { onCountChange: (n: number) => void }) {
+type OutletCtx = { refreshPending: () => void };
+
+export function ApprovalQueue() {
+  const { refreshPending } = useOutletContext<OutletCtx>();
+  const onCountChange = (_n: number) => refreshPending();
   const [items, setItems] = useState<PendingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);

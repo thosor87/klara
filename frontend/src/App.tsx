@@ -1,67 +1,52 @@
 import { useEffect, useState } from "react";
-import { api, type Me, type Folder } from "./api";
-import { TopBar } from "./components/TopBar";
-import { NavBar } from "./components/NavBar";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { api, type Me } from "./api";
+import { Layout } from "./components/Layout";
 import { FolderList } from "./components/FolderList";
 import { FolderView } from "./components/FolderView";
 import { ApprovalQueue } from "./components/ApprovalQueue";
 import { AdminFolders } from "./components/AdminFolders";
 import { AdminUsers } from "./components/AdminUsers";
-import { type View } from "./types";
 
 type Stage = "loading" | "email" | "code" | "in";
 
-function AppShell({ me, onLogout }: { me: Me; onLogout: () => void }) {
-  const [view, setView] = useState<View>("folders");
-  const [pendingCount, setPendingCount] = useState(0);
-  const [openFolder, setOpenFolder] = useState<Folder | null>(null);
+function RequireAdmin({ me, children }: { me: Me; children: React.ReactNode }) {
+  if (me.role !== "admin") return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
 
-  useEffect(() => {
-    if (me.role !== "admin") return;
-    function refresh() {
-      api.getPending().then((items) => setPendingCount(items.length));
-    }
-    refresh();
-    const id = setInterval(refresh, 30_000);
-    return () => clearInterval(id);
-  }, [me.role]);
-
-  function handleNav(newView: View) {
-    setOpenFolder(null);
-    setView(newView);
-  }
-
+function AppRoutes({ me, onLogout }: { me: Me; onLogout: () => void }) {
   return (
-    <div className="app">
-      <TopBar email={me.email} onLogout={onLogout} />
-      <NavBar role={me.role} view={view} onNav={handleNav} pendingCount={pendingCount} />
-      <main className="app-content">
-        {view === "folders" && (
-          openFolder
-            ? <FolderView folder={openFolder} onBack={() => setOpenFolder(null)} />
-            : <FolderList onOpenFolder={setOpenFolder} />
-        )}
-        {view === "approval" && me.role === "admin" && (
-          <ApprovalQueue onCountChange={setPendingCount} />
-        )}
-        {view === "admin-folders" && me.role === "admin" && <AdminFolders />}
-        {view === "admin-users" && me.role === "admin" && <AdminUsers />}
-      </main>
-    </div>
+    <Routes>
+      <Route element={<Layout me={me} onLogout={onLogout} />}>
+        <Route path="/" element={<FolderList />} />
+        <Route path="/ordner/:folderId" element={<FolderView />} />
+        <Route
+          path="/freigabe"
+          element={<RequireAdmin me={me}><ApprovalQueue /></RequireAdmin>}
+        />
+        <Route
+          path="/verwaltung/ordner"
+          element={<RequireAdmin me={me}><AdminFolders /></RequireAdmin>}
+        />
+        <Route
+          path="/verwaltung/nutzer"
+          element={<RequireAdmin me={me}><AdminUsers /></RequireAdmin>}
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
+    </Routes>
   );
 }
 
-export function App() {
-  const [stage, setStage] = useState<Stage>("loading");
+/** Renders the login flow; on success it stores `me` and navigates back to the
+ *  URL the user originally wanted (preserved across the gate). */
+function LoginGate({ onLoggedIn }: { onLoggedIn: (me: Me) => void }) {
+  const [stage, setStage] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [me, setMe] = useState<Me | null>(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    api.me().then((u) => { if (u) { setMe(u); setStage("in"); } else setStage("email"); });
-  }, []);
 
   async function submitEmail(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setErr("");
@@ -79,7 +64,7 @@ export function App() {
     e.preventDefault(); setBusy(true); setErr("");
     try {
       const u = await api.verify(email, code.trim());
-      if (u) { setMe(u); setStage("in"); }
+      if (u) onLoggedIn(u);
       else setErr("Code stimmt nicht oder ist abgelaufen.");
     } catch {
       setErr("Anmeldung fehlgeschlagen. Bitte erneut versuchen.");
@@ -88,15 +73,9 @@ export function App() {
     }
   }
 
-  async function logout() { await api.logout(); setMe(null); setEmail(""); setCode(""); setStage("email"); }
-
-  if (stage === "loading") return <main className="card"><p>Lädt …</p></main>;
-
-  if (stage === "in" && me) return <AppShell me={me} onLogout={logout} />;
-
   if (stage === "code") return (
-    <main className="card">
-      <h1>KlaRa</h1>
+    <main className="card auth-card">
+      <h1 className="auth-title">KlaRa</h1>
       <p className="muted">Wir haben dir eine Mail geschickt — falls deine Adresse freigeschaltet ist.
         Gib den 6-stelligen Code ein (oder klick den Link in der Mail).</p>
       <form onSubmit={submitCode}>
@@ -105,20 +84,62 @@ export function App() {
         <button disabled={busy || code.trim().length < 6}>Anmelden</button>
       </form>
       {err && <p className="err">{err}</p>}
-      <button onClick={() => setStage("email")} style={{ background: "transparent", color: "#5b3fb0" }}>
+      <button className="link-btn" onClick={() => { setStage("email"); setErr(""); }}>
         Andere Adresse</button>
     </main>
   );
 
   return (
-    <main className="card">
-      <h1>KlaRa</h1>
+    <main className="card auth-card">
+      <h1 className="auth-title">KlaRa</h1>
       <p className="muted">Melde dich mit deiner Schul-E-Mail an. Du bekommst einen Code per Mail.</p>
       <form onSubmit={submitEmail}>
         <input type="email" autoComplete="email" placeholder="name@grundschule-xy.de"
           value={email} onChange={(e) => setEmail(e.target.value)} />
         <button disabled={busy || !email.includes("@")}>Code anfordern</button>
       </form>
+      {err && <p className="err">{err}</p>}
     </main>
+  );
+}
+
+/** Bridges login state and the router: stays on the current URL after login. */
+function AuthBoundary() {
+  const [stage, setStage] = useState<Stage>("loading");
+  const [me, setMe] = useState<Me | null>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    api.me().then((u) => {
+      if (u) { setMe(u); setStage("in"); }
+      else setStage("email");
+    });
+  }, []);
+
+  async function logout() {
+    await api.logout();
+    setMe(null);
+    setStage("email");
+    navigate("/", { replace: true });
+  }
+
+  function handleLoggedIn(u: Me) {
+    setMe(u);
+    setStage("in");
+    // Stay on the originally requested URL (deep links survive the gate).
+    navigate(location.pathname + location.search, { replace: true });
+  }
+
+  if (stage === "loading") return <main className="card auth-card"><p>Lädt …</p></main>;
+  if (stage === "in" && me) return <AppRoutes me={me} onLogout={logout} />;
+  return <LoginGate onLoggedIn={handleLoggedIn} />;
+}
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <AuthBoundary />
+    </BrowserRouter>
   );
 }
