@@ -9,12 +9,15 @@ import { useConfirm } from "./ConfirmDialog";
 
 type SortOrder = "newest" | "oldest";
 
-type OutletCtx = { me?: Me };
+type OutletCtx = { me?: Me; refreshPending?: () => void };
 
 export function FolderView() {
   const { folderId = "" } = useParams();
-  const { me } = useOutletContext<OutletCtx>();
+  const { me, refreshPending } = useOutletContext<OutletCtx>();
   const isAdmin = me?.role === "admin";
+  // After an admin pulls a photo back to pending, refresh the items AND the
+  // nav badge immediately (instead of waiting for the 30s poll).
+  const onItemsChanged = () => { loadItems(); refreshPending?.(); };
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [folder, setFolder] = useState<Folder | null>(null);
@@ -182,7 +185,7 @@ export function FolderView() {
           folderId={folderId}
           isAdmin={isAdmin}
           onIndexChange={changeLightbox}
-          onChanged={loadItems}
+          onChanged={onItemsChanged}
           onClose={closeLightbox}
         />
       )}
