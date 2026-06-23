@@ -29,8 +29,8 @@ export function FolderView() {
   const [showShare, setShowShare] = useState(false);
   const [sort, setSort] = useState<SortOrder>("newest");
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  // Multi-select + bulk ZIP download in the gallery
-  const [selectMode, setSelectMode] = useState(false);
+  // Multi-select + bulk ZIP download in the gallery (the action bar appears as
+  // soon as the first photo is ticked — no separate "select mode" toggle).
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [zip, setZip] = useState<{ done: number; total: number } | null>(null);
   const [deleteErr, setDeleteErr] = useState("");
@@ -125,8 +125,7 @@ export function FolderView() {
     });
   }
   const allSelected = approved.length > 0 && selected.size === approved.length;
-  function exitSelect() {
-    setSelectMode(false);
+  function clearSelection() {
     setSelected(new Set());
   }
   async function downloadSelected() {
@@ -136,7 +135,7 @@ export function FolderView() {
     setZip({ done: 0, total: images.length });
     try {
       await downloadImagesAsZip(images, `klara-${slugify(title)}.zip`, (done, total) => setZip({ done, total }));
-      exitSelect();
+      clearSelection();
     } finally {
       setZip(null);
     }
@@ -203,14 +202,9 @@ export function FolderView() {
             >
               {sort === "newest" ? "Neueste zuerst ↓" : "Älteste zuerst ↑"}
             </button>
-            {!selectMode ? (
-              <button className="btn-secondary btn-inline" onClick={() => setSelectMode(true)}>Auswählen</button>
-            ) : (
-              <button className="btn-secondary btn-inline" onClick={exitSelect}>Fertig</button>
-            )}
           </div>
 
-          {selectMode && (
+          {selected.size > 0 && (
             <div className="select-bar" role="region" aria-label="Fotoauswahl">
               <span className="select-count">{selected.size} ausgewählt</span>
               <button
@@ -224,9 +218,12 @@ export function FolderView() {
                 type="button"
                 className="btn-inline"
                 onClick={downloadSelected}
-                disabled={selected.size === 0 || !!zip}
+                disabled={!!zip}
               >
                 {zip ? `Lädt … (${zip.done}/${zip.total})` : `Herunterladen (${selected.size})`}
+              </button>
+              <button type="button" className="link-btn" onClick={clearSelection} disabled={!!zip}>
+                Abbrechen
               </button>
             </div>
           )}
@@ -235,7 +232,6 @@ export function FolderView() {
             items={approved}
             onOpen={openLightbox}
             label={`Fotos in ${title}`}
-            selectable={selectMode}
             selected={selected}
             onToggleSelect={toggleSelect}
           />

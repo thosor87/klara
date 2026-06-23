@@ -897,14 +897,23 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
   border-radius: 14px; box-shadow: var(--shadow-sm);
   position: sticky; top: .5rem; z-index: 5;
 }
+.select-bar .link-btn { width: auto; margin: 0; }
 .select-count { font-weight: 600; color: var(--ink); }
 .select-all { width: auto; margin: 0; }
+.gallery-tile { position: relative; }
 .gallery-tile--selected .gallery-tile-btn { outline: 3px solid var(--purple); outline-offset: -3px; }
 .gallery-tile--selected .gallery-img { filter: brightness(.9); }
-.gallery-check {
-  position: absolute; top: 8px; right: 8px; width: 26px; height: 26px;
+/* Per-tile selection checkbox (sibling of the image button, so it doesn't open the lightbox) */
+.gallery-check-btn {
+  position: absolute; top: 8px; right: 8px; z-index: 3;
+  width: 30px; height: 30px; min-height: 0; margin: 0; padding: 0;
   border-radius: 50%; display: grid; place-items: center;
-  background: rgba(255,255,255,.85); border: 2px solid var(--purple);
-  color: var(--purple); font-weight: 700; font-size: .9rem; line-height: 1;
+  background: rgba(255,255,255,.75); border: 2px solid rgba(91,63,176,.55);
+  color: var(--purple); font-weight: 800; font-size: 1rem; line-height: 1;
+  cursor: pointer; opacity: .9;
+  transition: opacity .15s var(--ease), background .15s var(--ease), transform .1s var(--ease);
 }
-.gallery-check.is-on { background: var(--purple); color: #fff; }
+.gallery-tile:hover .gallery-check-btn,
+.gallery-check-btn:focus-visible { opacity: 1; }
+.gallery-check-btn:hover { background: #fff; }
+.gallery-check-btn.is-on { background: var(--purple); border-color: var(--purple); color: #fff; opacity: 1; }
