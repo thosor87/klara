@@ -53,12 +53,28 @@ export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance
   if (opts.registerRoutes) await opts.registerRoutes(app);
 
   if (existsSync(frontendDist)) {
-    await app.register(fastifyStatic, { root: frontendDist });
+    await app.register(fastifyStatic, {
+      root: frontendDist,
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith("index.html")) {
+          // The HTML entry must never be cached: a new deploy ships new
+          // content-hashed asset names, and a stale index.html would keep
+          // pointing at the old ones. Always revalidate.
+          res.setHeader("Cache-Control", "no-cache, must-revalidate");
+        } else if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+          // Vite content-hashes these filenames, so the name IS the cache-buster:
+          // safe to cache forever and never revalidate.
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        }
+      },
+    });
     app.setNotFoundHandler((req, reply) => {
       if (req.url.startsWith("/api/")) {
         reply.code(404).send({ error: "not_found" });
         return;
       }
+      // SPA fallback also serves index.html → keep it uncached.
+      reply.header("Cache-Control", "no-cache, must-revalidate");
       reply.type("text/html").sendFile("index.html");
     });
   }
