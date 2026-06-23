@@ -1,5 +1,8 @@
 export interface Me { id: string; email: string; role: "admin" | "member"; status: string; }
 
+/** Klares Feedback auf einen Login-Request (kein generisches "Mail gesendet"). */
+export type RequestLoginOutcome = "code_sent" | "pending" | "denied";
+
 export interface Folder {
   id: string;
   name: string;
@@ -87,13 +90,15 @@ export const api = {
     const data = await jsonOrNull(await fetch("/api/me"));
     return data?.user ?? null;
   },
-  async requestLogin(email: string): Promise<void> {
+  async requestLogin(email: string): Promise<RequestLoginOutcome> {
     const res = await fetch("/api/auth/request", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ email }),
     });
     if (!res.ok) throw new Error(`requestLogin failed: ${res.status}`);
+    const data = await res.json();
+    return data.outcome as RequestLoginOutcome;
   },
   async verify(email: string, code: string): Promise<Me | null> {
     const data = await jsonOrNull(await fetch("/api/auth/verify", { method: "POST",

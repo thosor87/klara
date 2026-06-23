@@ -66,22 +66,29 @@ function AppRoutes({ me, onLogout }: { me: Me; onLogout: () => void }) {
 /** Renders the login flow; on success it stores `me` and navigates back to the
  *  URL the user originally wanted (preserved across the gate). */
 function LoginGate({ onLoggedIn }: { onLoggedIn: (me: Me) => void }) {
-  const [stage, setStage] = useState<"email" | "code">("email");
+  const [stage, setStage] = useState<"email" | "code" | "pending">("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [err, setErr] = useState("");
+  const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function submitEmail(e: React.FormEvent) {
-    e.preventDefault(); setBusy(true); setErr("");
+    e.preventDefault(); setBusy(true); setErr(""); setNotice("");
     try {
-      await api.requestLogin(email);
-      setStage("code");
+      const outcome = await api.requestLogin(email);
+      if (outcome === "code_sent") setStage("code");
+      else if (outcome === "pending") setStage("pending");
+      else setNotice("Diese Adresse ist nicht freigeschaltet. Wenn das ein Fehler ist, wende dich an die Lehrerin.");
     } catch {
       setErr("Anfrage fehlgeschlagen. Bitte erneut versuchen.");
     } finally {
       setBusy(false);
     }
+  }
+
+  function backToEmail() {
+    setStage("email"); setErr(""); setNotice("");
   }
 
   async function submitCode(e: React.FormEvent) {
@@ -102,16 +109,22 @@ function LoginGate({ onLoggedIn }: { onLoggedIn: (me: Me) => void }) {
       {stage === "code" ? (
         <main className="card auth-card">
           <h1 className="auth-title">KlaRa</h1>
-          <p className="muted">Wir haben dir eine Mail geschickt — falls deine Adresse freigeschaltet ist.
-            Gib den 6-stelligen Code ein (oder klick den Link in der Mail).</p>
+          <p className="muted">Wir haben dir eine Mail mit einem 6-stelligen Code geschickt.
+            Gib ihn hier ein (oder klick den Link in der Mail).</p>
           <form onSubmit={submitCode}>
             <input inputMode="numeric" autoComplete="one-time-code" placeholder="6-stelliger Code"
               value={code} onChange={(e) => setCode(e.target.value)} />
             <button disabled={busy || code.trim().length < 6}>Anmelden</button>
           </form>
           {err && <p className="err">{err}</p>}
-          <button className="link-btn" onClick={() => { setStage("email"); setErr(""); }}>
-            Andere Adresse</button>
+          <button className="link-btn" onClick={backToEmail}>Andere Adresse</button>
+        </main>
+      ) : stage === "pending" ? (
+        <main className="card auth-card">
+          <h1 className="auth-title">KlaRa</h1>
+          <p className="muted">Deine Anmeldung wartet noch auf Freischaltung durch die Lehrerin.
+            Sobald sie dich freischaltet, kannst du dich anmelden.</p>
+          <button className="link-btn" onClick={backToEmail}>Andere Adresse</button>
         </main>
       ) : (
         <main className="card auth-card">
@@ -122,6 +135,7 @@ function LoginGate({ onLoggedIn }: { onLoggedIn: (me: Me) => void }) {
               value={email} onChange={(e) => setEmail(e.target.value)} />
             <button disabled={busy || !email.includes("@")}>Code anfordern</button>
           </form>
+          {notice && <p className="err">{notice}</p>}
           {err && <p className="err">{err}</p>}
         </main>
       )}
