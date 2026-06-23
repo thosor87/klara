@@ -309,11 +309,11 @@ export const api = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (res.status === 400) {
+    if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       if (data?.error === "cannot_modify_self") return { error: "cannot_modify_self" };
+      throw new Error(data?.error ?? `Fehler ${res.status}`);
     }
-    if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
 };
