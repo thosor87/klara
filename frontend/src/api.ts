@@ -18,11 +18,21 @@ export interface Folder {
   classIds: string[];
 }
 
+/** Lifecycle status computed server-side from track + Einschulungsjahr. */
+export type ClassStatus = "active" | "alumni" | "archived" | "expired" | "future" | "legacy";
+
 export interface ClassOption {
   id: string;
+  /** Server-computed display label (e.g. "2m"); for legacy = stored label. */
   label: string;
-  sortOrder: number;
-  createdAt: string;
+  /** Zug, e.g. "m" — empty string for a Regelklasse. */
+  track: string;
+  /** Einschulungsjahr; null for legacy classes. */
+  startYear: number | null;
+  /** Lifecycle status, computed server-side. */
+  status: ClassStatus;
+  /** Current school year (e.g. "2025/26") for active classes; otherwise null. */
+  schoolYear: string | null;
 }
 
 export interface Item {
@@ -119,8 +129,6 @@ export const api = {
   },
   async createFolder(body: {
     name: string;
-    schoolYear?: string;
-    classLabel?: string;
     startDate?: string | null;
     endDate?: string | null;
     coverItemId?: string | null;
@@ -136,8 +144,6 @@ export const api = {
   },
   async updateFolder(id: string, body: {
     name?: string;
-    schoolYear?: string;
-    classLabel?: string;
     enabled?: boolean;
     startDate?: string | null;
     endDate?: string | null;
@@ -173,11 +179,25 @@ export const api = {
     const data = await jsonOrNull(await fetch("/api/admin/class-options"));
     return data ?? [];
   },
-  async addClassOption(label: string): Promise<ClassOption> {
+  /** Create a cohort class from Zug + Einschulungsjahr. */
+  async addClassOption(body: { track: string; startYear: number }): Promise<ClassOption> {
     const res = await fetch("/api/admin/class-options", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ label }),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+  /** Update a class's Zug and/or Einschulungsjahr (e.g. to convert a legacy class). */
+  async updateClassOption(
+    id: string,
+    body: { track?: string; startYear?: number | null },
+  ): Promise<ClassOption> {
+    const res = await fetch(`/api/admin/class-options/${id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
