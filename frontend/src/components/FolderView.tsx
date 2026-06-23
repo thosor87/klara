@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { api, type Folder, type Item } from "../api";
 import { UploadDialog } from "./UploadDialog";
 import { Gallery } from "./Gallery";
 import { Lightbox } from "./Lightbox";
 import { ShareDialog } from "./ShareDialog";
+
+type SortOrder = "newest" | "oldest";
 
 export function FolderView() {
   const { folderId = "" } = useParams();
@@ -16,6 +18,8 @@ export function FolderView() {
   const [error, setError] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [sort, setSort] = useState<SortOrder>("newest");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   function loadItems() {
     setLoading(true);
@@ -34,25 +38,56 @@ export function FolderView() {
 
   useEffect(() => { loadItems(); }, [folderId]);
 
+  // Split approved (shown in the gallery + lightbox) from the member's own
+  // pending uploads (shown separately, with a delete button).
+  const approved = useMemo(() => {
+    const list = items.filter((i) => i.status === "approved");
+    list.sort((a, b) =>
+      sort === "newest"
+        ? b.createdAt.localeCompare(a.createdAt)
+        : a.createdAt.localeCompare(b.createdAt),
+    );
+    return list;
+  }, [items, sort]);
+
+  const myPending = useMemo(
+    () => items.filter((i) => i.mine && i.status === "pending"),
+    [items],
+  );
+
   // The lightbox index is derived from the ?foto= query param so deep links and
-  // the back button work. -1 means closed.
+  // the back button work. It only ever indexes the APPROVED gallery list.
   const fotoId = searchParams.get("foto");
-  const lightboxIndex = fotoId ? items.findIndex((i) => i.id === fotoId) : -1;
+  const lightboxIndex = fotoId ? approved.findIndex((i) => i.id === fotoId) : -1;
 
   function openLightbox(index: number) {
     const next = new URLSearchParams(searchParams);
-    next.set("foto", items[index].id);
+    next.set("foto", approved[index].id);
     setSearchParams(next, { replace: false });
   }
   function changeLightbox(index: number) {
     const next = new URLSearchParams(searchParams);
-    next.set("foto", items[index].id);
+    next.set("foto", approved[index].id);
     setSearchParams(next, { replace: true });
   }
   function closeLightbox() {
     const next = new URLSearchParams(searchParams);
     next.delete("foto");
     setSearchParams(next, { replace: true });
+  }
+
+  async function handleDelete(id: string) {
+    if (deletingId) return;
+    if (!window.confirm("Dieses Foto wirklich löschen? Es ist noch nicht freigegeben.")) return;
+    setDeletingId(id);
+    try {
+      await api.deleteItem(id);
+      loadItems();
+    } catch {
+      window.alert("Löschen fehlgeschlagen. Bitte erneut versuchen.");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   const title = folder?.name ?? "Ordner";
@@ -78,17 +113,50 @@ export function FolderView() {
 
       {loading && <p className="muted">Lädt Fotos …</p>}
       {!loading && error && <p className="err">Fotos konnten nicht geladen werden.</p>}
-      {!loading && !error && !items.length && (
+
+      {/* Member's own pending uploads — awaiting approval */}
+      {!loading && !error && myPending.length > 0 && (
+        <section className="pending-section">
+          <h2 className="pending-section-title">Deine Uploads — wartet auf Freigabe</h2>
+          <ul className="pending-grid">
+            {myPending.map((item) => (
+              <li key={item.id} className="pending-tile">
+                <img src={item.thumbUrl} alt={item.caption || "Foto"} loading="lazy" />
+                <span className="pending-badge">wartet auf Freigabe</span>
+                <button
+                  className="pending-delete"
+                  aria-label="Foto löschen"
+                  onClick={() => handleDelete(item.id)}
+                  disabled={deletingId === item.id}
+                >×</button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {!loading && !error && !approved.length && !myPending.length && (
         <p className="muted empty-hint">Noch keine freigegebenen Fotos.</p>
       )}
 
-      {!loading && items.length > 0 && (
-        <Gallery items={items} onOpen={openLightbox} label={`Fotos in ${title}`} />
+      {!loading && approved.length > 0 && (
+        <>
+          <div className="gallery-toolbar">
+            <button
+              className="sort-toggle"
+              onClick={() => setSort((s) => (s === "newest" ? "oldest" : "newest"))}
+              aria-label="Sortierung umschalten"
+            >
+              {sort === "newest" ? "Neueste zuerst ↓" : "Älteste zuerst ↑"}
+            </button>
+          </div>
+          <Gallery items={approved} onOpen={openLightbox} label={`Fotos in ${title}`} />
+        </>
       )}
 
       {lightboxIndex >= 0 && (
         <Lightbox
-          items={items}
+          items={approved}
           index={lightboxIndex}
           folderId={folderId}
           onIndexChange={changeLightbox}
