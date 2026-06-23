@@ -276,7 +276,7 @@ function CoverPicker({
         </p>
         {loading && <p className="muted">Lädt Fotos …</p>}
         {!loading && !items.length && (
-          <p className="muted">Dieser Ordner hat noch keine freigegebenen Fotos.</p>
+          <p className="muted">Dieses Album hat noch keine freigegebenen Fotos.</p>
         )}
         {!loading && items.length > 0 && (
           <div className="cover-grid">
@@ -378,21 +378,21 @@ export function AdminFolders() {
     }
   }
 
-  if (loading) return <p className="muted">Lädt Ordner …</p>;
-  if (error) return <p className="err">Ordner konnten nicht geladen werden.</p>;
+  if (loading) return <p className="muted">Lädt Alben …</p>;
+  if (error) return <p className="err">Alben konnten nicht geladen werden.</p>;
 
   return (
     <div className="admin-section">
       <div className="admin-section-header">
-        <h2>Ordner verwalten</h2>
+        <h2>Alben verwalten</h2>
         <button style={{ width: "auto", margin: 0 }} onClick={() => setShowCreate((v) => !v)}>
-          {showCreate ? "Abbrechen" : "+ Neuer Ordner"}
+          {showCreate ? "Abbrechen" : "+ Neues Album"}
         </button>
       </div>
 
       {showCreate && (
         <div className="card" style={{ maxWidth: "none", margin: "1rem 0" }}>
-          <h3 style={{ margin: "0 0 .75rem", color: "#5b3fb0" }}>Neuen Ordner anlegen</h3>
+          <h3 style={{ margin: "0 0 .75rem", color: "#5b3fb0" }}>Neues Album anlegen</h3>
           <form onSubmit={handleCreate} className="admin-folder-edit-form">
             <FolderFormFields form={createForm} setForm={setCreateForm} classOptions={classOptions} />
             {createErr && <p className="err">{createErr}</p>}
@@ -405,7 +405,7 @@ export function AdminFolders() {
         </div>
       )}
 
-      {!folders.length && <p className="muted">Noch keine Ordner vorhanden.</p>}
+      {!folders.length && <p className="muted">Noch keine Alben vorhanden.</p>}
 
       <ul className="admin-folder-list">
         {folders.map((f, i) => (

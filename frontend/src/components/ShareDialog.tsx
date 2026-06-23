@@ -60,7 +60,7 @@ export function ShareDialog({
       >
         <h2 id="share-title">Teilen</h2>
         <p className="muted">
-          Schick diesen Link an ein Klassen-Mitglied. {itemId ? "Er öffnet direkt dieses Foto." : "Er öffnet diesen Ordner."}
+          Schick diesen Link an ein Klassen-Mitglied. {itemId ? "Er öffnet direkt dieses Foto." : "Er öffnet dieses Album."}
         </p>
 
         <div className="share-link-row">

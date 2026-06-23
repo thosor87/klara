@@ -28,8 +28,8 @@ export function Anleitung() {
 
       <h2>Fotos ansehen</h2>
       <p>
-        Nach dem Anmelden siehst du die <strong>Ordner</strong> — zum Beispiel nach Schuljahr,
-        Klasse oder Anlass sortiert. Tippe einen Ordner an, um die <strong>Galerie</strong> zu
+        Nach dem Anmelden siehst du die <strong>Alben</strong> — zum Beispiel nach Schuljahr,
+        Klasse oder Anlass sortiert. Tippe ein Album an, um die <strong>Galerie</strong> zu
         öffnen.
       </p>
       <ul>
@@ -56,7 +56,7 @@ export function Anleitung() {
 
       <h2>Fotos hochladen</h2>
       <p>
-        In jedem Ordner kannst du eigene Fotos beitragen. Tippe auf „Hochladen", wähle ein oder
+        In jedem Album kannst du eigene Fotos beitragen. Tippe auf „Hochladen", wähle ein oder
         mehrere Bilder aus, und sie werden hochgeladen. Deine Fotos sind zuerst mit dem Hinweis
         <strong> „wartet auf Freigabe"</strong> markiert — die Lehrerin schaut sie kurz an, bevor
         sie für alle sichtbar werden.
@@ -80,9 +80,9 @@ export function Anleitung() {
       <p>Als Administratorin hast du zusätzliche Möglichkeiten:</p>
       <ul>
         <li>
-          <strong>Ordner anlegen:</strong> Unter „Ordner verwalten" legst du Ordner an — mit
+          <strong>Alben anlegen:</strong> Unter „Alben verwalten" legst du Alben an — mit
           Schuljahr, Klasse, Datum (ein Tag oder ein Zeitraum), einem Titelbild aus den Fotos des
-          Ordners und einer wählbaren Reihenfolge.
+          Albums und einer wählbaren Reihenfolge.
         </li>
         <li>
           <strong>Freigeben:</strong> Unter „Freigabe" prüfst du neue Uploads. Du kannst mehrere
@@ -94,21 +94,18 @@ export function Anleitung() {
           kannst antworten, ignorieren oder das Foto entfernen.
         </li>
         <li>
-          <strong>Papierkorb:</strong> Gelöschte Fotos liegen 30 Tage im Papierkorb und lassen sich
-          dort wiederherstellen, bevor sie endgültig verschwinden.
+          <strong>Papierkorb:</strong> Gelöschte Fotos liegen 30 Tage im Papierkorb (unten unter
+          „Alben verwalten") und lassen sich dort wiederherstellen, bevor sie endgültig verschwinden.
         </li>
         <li>
           <strong>Nutzer verwalten:</strong> Unter „Nutzer" schaltest du wartende Anmeldungen frei,
           lädst neue Adressen ein, machst Mitglieder zu Admins (oder zurück) und deaktivierst
-          Konten.
+          Konten. Dort legst du auch unter „Erlaubte Login-Domains" fest, welche E-Mail-Domains
+          sich anmelden dürfen.
         </li>
         <li>
-          <strong>Domains verwalten:</strong> Unter „Domains" legst du fest, welche
-          E-Mail-Domains sich anmelden dürfen.
-        </li>
-        <li>
-          <strong>Klassen verwalten:</strong> Unter „Klassen" pflegst du die Auswahlliste, die beim
-          Anlegen eines Ordners erscheint.
+          <strong>Klassen verwalten:</strong> Über den Link „Klassen verwalten" im Album-Formular
+          pflegst du die Auswahlliste, die beim Anlegen eines Albums erscheint.
         </li>
       </ul>
 

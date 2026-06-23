@@ -14,18 +14,18 @@ export function FolderList() {
       .catch(() => { setError(true); setLoading(false); });
   }, []);
 
-  if (loading) return <p className="muted">Lädt Ordner …</p>;
-  if (error) return <p className="err">Ordner konnten nicht geladen werden.</p>;
+  if (loading) return <p className="muted">Lädt Alben …</p>;
+  if (error) return <p className="err">Alben konnten nicht geladen werden.</p>;
 
   return (
     <section className="folders-page">
       <header className="page-head">
         <p className="page-kicker">Unser Klassenalbum</p>
-        <h1 className="page-title">Ordner</h1>
+        <h1 className="page-title">Alben</h1>
       </header>
 
       {!folders.length ? (
-        <p className="muted empty-hint">Noch keine Ordner vorhanden.</p>
+        <p className="muted empty-hint">Noch keine Alben vorhanden.</p>
       ) : (
         <div className="folder-grid">
           {folders.map((f, i) => {
