@@ -17,6 +17,12 @@ export function NavBar({ role, pendingCount }: {
         </NavLink>
       )}
       {role === "admin" && (
+        <NavLink to="/meldungen" className={cls}>Meldungen</NavLink>
+      )}
+      {role === "admin" && (
+        <NavLink to="/papierkorb" className={cls}>Papierkorb</NavLink>
+      )}
+      {role === "admin" && (
         <NavLink to="/verwaltung/ordner" className={cls}>Ordner verwalten</NavLink>
       )}
       {role === "admin" && (

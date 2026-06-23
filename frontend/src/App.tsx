@@ -7,6 +7,8 @@ import { FolderView } from "./components/FolderView";
 import { ApprovalQueue } from "./components/ApprovalQueue";
 import { AdminFolders } from "./components/AdminFolders";
 import { AdminUsers } from "./components/AdminUsers";
+import { ReportsQueue } from "./components/ReportsQueue";
+import { Trash } from "./components/Trash";
 
 type Stage = "loading" | "email" | "code" | "in";
 
@@ -24,6 +26,14 @@ function AppRoutes({ me, onLogout }: { me: Me; onLogout: () => void }) {
         <Route
           path="/freigabe"
           element={<RequireAdmin me={me}><ApprovalQueue /></RequireAdmin>}
+        />
+        <Route
+          path="/meldungen"
+          element={<RequireAdmin me={me}><ReportsQueue /></RequireAdmin>}
+        />
+        <Route
+          path="/papierkorb"
+          element={<RequireAdmin me={me}><Trash /></RequireAdmin>}
         />
         <Route
           path="/verwaltung/ordner"

@@ -5,24 +5,34 @@ import { TopBar } from "./TopBar";
 import { NavBar } from "./NavBar";
 
 export function Layout({ me, onLogout }: { me: Me; onLogout: () => void }) {
-  const [pendingCount, setPendingCount] = useState(0);
+  const [badgeCount, setBadgeCount] = useState(0);
+
+  async function refreshBadge() {
+    try {
+      const [pending, reports] = await Promise.all([
+        api.getPending(),
+        api.getReports(),
+      ]);
+      const openReports = reports.filter((r) => r.status === "open").length;
+      setBadgeCount(pending.length + openReports);
+    } catch {
+      // silently ignore errors — badge stays as-is
+    }
+  }
 
   useEffect(() => {
     if (me.role !== "admin") return;
-    function refresh() {
-      api.getPending().then((items) => setPendingCount(items.length)).catch(() => {});
-    }
-    refresh();
-    const id = setInterval(refresh, 30_000);
+    refreshBadge();
+    const id = setInterval(refreshBadge, 30_000);
     return () => clearInterval(id);
   }, [me.role]);
 
   return (
     <div className="app">
       <TopBar email={me.email} onLogout={onLogout} />
-      <NavBar role={me.role} pendingCount={pendingCount} />
+      <NavBar role={me.role} pendingCount={badgeCount} />
       <main className="app-content">
-        <Outlet context={{ refreshPending: () => api.getPending().then((i) => setPendingCount(i.length)).catch(() => {}) }} />
+        <Outlet context={{ refreshPending: refreshBadge }} />
       </main>
     </div>
   );
