@@ -1018,7 +1018,7 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
 .album-rangepill {
   display: inline-flex; align-items: center; box-sizing: border-box; min-height: 46px; gap: .6rem;
   border: 1.5px solid var(--purple-line); border-radius: 999px; background: #fff;
-  padding: 0 1.1rem; margin-top: .4rem;
+  padding: 0 1.1rem;
   transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
 }
 .album-rangepill:focus-within { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(91,63,176,.16); }

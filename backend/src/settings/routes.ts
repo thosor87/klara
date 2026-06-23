@@ -22,6 +22,11 @@ function toView(opt: ClassOption, now: Date) {
   };
 }
 
+/** Class lists are sorted alphabetically by their (computed) label, natural order. */
+function sortByLabel<T extends { label: string }>(views: T[]): T[] {
+  return [...views].sort((a, b) => a.label.localeCompare(b.label, "de", { numeric: true }));
+}
+
 export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsRoutesDeps): void {
   const { domainsRepo, classOptionsRepo, requireUser, requireAdmin } = deps;
 
@@ -63,7 +68,7 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsRoute
   app.get("/api/admin/class-options", { preHandler: requireAdmin }, async (_req, reply) => {
     const now = new Date();
     const options = await classOptionsRepo.list();
-    return reply.send(options.map((o) => toView(o, now)));
+    return reply.send(sortByLabel(options.map((o) => toView(o, now))));
   });
 
   // POST /api/admin/class-options
@@ -123,6 +128,6 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsRoute
   app.get("/api/class-options", { preHandler: requireUser }, async (_req, reply) => {
     const now = new Date();
     const options = await classOptionsRepo.list();
-    return reply.send(options.map((o) => toView(o, now)));
+    return reply.send(sortByLabel(options.map((o) => toView(o, now))));
   });
 }
