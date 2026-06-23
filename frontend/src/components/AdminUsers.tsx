@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, type User } from "../api";
+import { api, type User, type ClassOption } from "../api";
 import { DomainsCard } from "./Settings";
 
 function statusLabel(status: string): string {
@@ -11,16 +11,18 @@ function statusLabel(status: string): string {
 
 function UserRow({
   user,
+  classOptions,
   onUpdated,
 }: {
   user: User;
+  classOptions: ClassOption[];
   onUpdated: (updated: User) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [selfMsg, setSelfMsg] = useState(false);
   const [err, setErr] = useState("");
 
-  async function patch(body: { status?: string; role?: "admin" | "member" }) {
+  async function patch(body: { status?: string; role?: "admin" | "member"; classId?: string | null }) {
     if (busy) return;
     setBusy(true);
     setErr("");
@@ -58,6 +60,20 @@ function UserRow({
         <span className={`role-pill role-pill--${user.role}`}>
           {user.role === "admin" ? "Admin" : "Mitglied"}
         </span>
+        <label className="user-class-field">
+          <span className="user-class-label">Klasse</span>
+          <select
+            className="user-class-select"
+            value={user.classId ?? ""}
+            disabled={busy}
+            onChange={(e) => patch({ classId: e.target.value || null })}
+          >
+            <option value="">— keine —</option>
+            {classOptions.map((c) => (
+              <option key={c.id} value={c.id}>{c.label}</option>
+            ))}
+          </select>
+        </label>
         <span className="upload-count">{count} {count === 1 ? "Foto" : "Fotos"}</span>
       </div>
       <div className="admin-folder-actions">
@@ -97,6 +113,7 @@ function UserSection({
   title,
   hint,
   users,
+  classOptions,
   onUpdated,
   emptyText,
   variant,
@@ -104,6 +121,7 @@ function UserSection({
   title: string;
   hint?: string;
   users: User[];
+  classOptions: ClassOption[];
   onUpdated: (u: User) => void;
   emptyText: string;
   variant: "pending" | "admins" | "members";
@@ -121,7 +139,7 @@ function UserSection({
       ) : (
         <ul className="admin-folder-list">
           {users.map((u) => (
-            <UserRow key={u.id} user={u} onUpdated={onUpdated} />
+            <UserRow key={u.id} user={u} classOptions={classOptions} onUpdated={onUpdated} />
           ))}
         </ul>
       )}
@@ -131,18 +149,19 @@ function UserSection({
 
 export function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
+  const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
-  const [addForm, setAddForm] = useState({ email: "", role: "member" as "admin" | "member" });
+  const [addForm, setAddForm] = useState({ email: "", role: "member" as "admin" | "member", classId: "" });
   const [addBusy, setAddBusy] = useState(false);
   const [addErr, setAddErr] = useState("");
 
   useEffect(() => {
-    api
-      .getUsers()
-      .then((u) => {
+    Promise.all([api.getUsers(), api.getClassOptions()])
+      .then(([u, c]) => {
         setUsers(u);
+        setClassOptions(c);
         setLoading(false);
       })
       .catch(() => {
@@ -161,12 +180,16 @@ export function AdminUsers() {
     setAddBusy(true);
     setAddErr("");
     try {
-      const user = await api.createUser({ email: addForm.email.trim(), role: addForm.role });
+      const user = await api.createUser({
+        email: addForm.email.trim(),
+        role: addForm.role,
+        classId: addForm.classId || null,
+      });
       setUsers((prev) => {
         const exists = prev.find((u) => u.id === user.id);
         return exists ? prev.map((u) => (u.id === user.id ? user : u)) : [...prev, user];
       });
-      setAddForm({ email: "", role: "member" });
+      setAddForm({ email: "", role: "member", classId: "" });
       setShowAdd(false);
     } catch (e: any) {
       setAddErr(e.message ?? "Fehler beim Anlegen.");
@@ -228,6 +251,25 @@ export function AdminUsers() {
               <option value="member">Mitglied</option>
               <option value="admin">Admin</option>
             </select>
+            <select
+              value={addForm.classId}
+              onChange={(e) => setAddForm((p) => ({ ...p, classId: e.target.value }))}
+              style={{
+                font: "inherit",
+                width: "100%",
+                padding: ".8rem 1rem",
+                borderRadius: "12px",
+                border: "1px solid #d9d3ef",
+                marginTop: ".6rem",
+                background: "#fff",
+                color: "#1f1b2e",
+              }}
+            >
+              <option value="">Klasse: — keine —</option>
+              {classOptions.map((c) => (
+                <option key={c.id} value={c.id}>Klasse: {c.label}</option>
+              ))}
+            </select>
             {addErr && <p className="err">{addErr}</p>}
             <div style={{ display: "flex", gap: ".75rem", marginTop: "1rem" }}>
               <button
@@ -248,8 +290,9 @@ export function AdminUsers() {
         <div className="user-sections">
           <UserSection
             title="Wartet auf Freischaltung"
-            hint="Diese Adressen haben sich angemeldet und warten auf deine Freischaltung."
+            hint="Diese Adressen haben sich angemeldet und warten auf deine Freischaltung. Du kannst gleich eine Klasse zuweisen."
             users={pending}
+            classOptions={classOptions}
             onUpdated={handleUpdated}
             emptyText="Keine offenen Anfragen."
             variant="pending"
@@ -257,6 +300,7 @@ export function AdminUsers() {
           <UserSection
             title="Lehrerinnen / Admins"
             users={admins}
+            classOptions={classOptions}
             onUpdated={handleUpdated}
             emptyText="Noch keine Admins."
             variant="admins"
@@ -264,6 +308,7 @@ export function AdminUsers() {
           <UserSection
             title="Mitglieder"
             users={members}
+            classOptions={classOptions}
             onUpdated={handleUpdated}
             emptyText="Noch keine Mitglieder."
             variant="members"
