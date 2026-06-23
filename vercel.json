@@ -9,7 +9,8 @@
   },
   "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
   "crons": [
-    { "path": "/api/cron/purge",  "schedule": "0 3 * * *" },
-    { "path": "/api/cron/digest", "schedule": "0 7 * * *" }
+    { "path": "/api/cron/purge",      "schedule": "0 3 * * *" },
+    { "path": "/api/cron/graduation", "schedule": "30 3 * * *" },
+    { "path": "/api/cron/digest",     "schedule": "0 7 * * *" }
   ]
 }

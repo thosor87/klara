@@ -6,6 +6,8 @@ import type { ReportsRepo } from "../reports/repo.js";
 import type { Storage } from "../storage/s3.js";
 import type { Mailer, DigestData } from "../auth/mailer.js";
 import type { AuthRepo, NewLoginToken } from "../auth/repo.js";
+import type { ClassOptionsRepo, ClassOption } from "../settings/repo.js";
+import type { GraduationRepo } from "../classes/repo.js";
 import type { User, UserRole, UserStatus, LoginTokenRow } from "../types.js";
 import { registerCronRoutes } from "./routes.js";
 
@@ -102,6 +104,54 @@ function fakeAuthRepo(overrides: Partial<AuthRepo> = {}): AuthRepo {
   };
 }
 
+function fakeClassOptionsRepo(overrides: Partial<ClassOptionsRepo> = {}): ClassOptionsRepo {
+  return {
+    list: async () => [],
+    add: async (input) => ({
+      id: "c1", label: input.label ?? "", track: input.track ?? "",
+      startYear: input.startYear ?? null, sortOrder: 0, createdAt: "x",
+    }),
+    update: async () => null,
+    remove: async () => {},
+    ...overrides,
+  };
+}
+
+function fakeGraduationRepo(overrides: Partial<GraduationRepo> = {}): GraduationRepo {
+  return {
+    foldersForClass: async () => [],
+    unlinkClass: async () => {},
+    orphanFolders: async () => [],
+    itemKeysForFolders: async () => [],
+    deleteFoldersAndItems: async () => ({ folders: 0, items: 0 }),
+    unassignUsers: async () => {},
+    deleteClass: async () => {},
+    ...overrides,
+  };
+}
+
+// The graduation route uses the real `new Date()` internally, so build classes
+// whose status is genuinely what we want relative to the current date.
+const NOW = new Date();
+const SY_NOW = NOW.getUTCMonth() >= 7 ? NOW.getUTCFullYear() : NOW.getUTCFullYear() - 1;
+
+/** Cohort that graduated long ago (gradAug ~6 years back) → status expired. */
+function expiredClass(id: string): ClassOption {
+  // grade = SY_NOW - startYear + 1; want grade >> 4 and >180 days past gradAug.
+  // startYear = SY_NOW - 9 → graduated ~5 school years ago → far past 180 days.
+  return { id, label: "", track: "m", startYear: SY_NOW - 9, sortOrder: 0, createdAt: "x" };
+}
+
+/** Active cohort (grade 1) → not expired, never purged. */
+function activeClass(id: string): ClassOption {
+  return { id, label: "", track: "m", startYear: SY_NOW, sortOrder: 0, createdAt: "x" };
+}
+
+/** Legacy class (start_year null) → never purged. */
+function legacyClass(id: string): ClassOption {
+  return { id, label: "1. Klasse", track: "", startYear: null, sortOrder: 0, createdAt: "x" };
+}
+
 async function makeApp(
   itemsRepo: ItemsRepo,
   reportsRepo: ReportsRepo,
@@ -109,6 +159,8 @@ async function makeApp(
   mailer: Mailer,
   authRepo: AuthRepo,
   cronSecretOverride = CRON_SECRET,
+  classOptionsRepo: ClassOptionsRepo = fakeClassOptionsRepo(),
+  graduationRepo: GraduationRepo = fakeGraduationRepo(),
 ) {
   const app = Fastify();
   await app.register(fastifyCookie, { secret: "test-secret" });
@@ -118,6 +170,8 @@ async function makeApp(
     storage,
     mailer,
     authRepo,
+    classOptionsRepo,
+    graduationRepo,
     cronSecret: cronSecretOverride,
     trashRetentionDays: 30,
   });
@@ -159,6 +213,12 @@ describe("cron auth", () => {
       url: "/api/cron/digest",
       headers: { authorization: "Bearer wrong-secret" },
     });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("GET /api/cron/graduation without auth → 401", async () => {
+    const app = await makeApp(fakeItemsRepo(), fakeReportsRepo(), fakeStorage(), fakeMailer(), fakeAuthRepo());
+    const res = await app.inject({ method: "GET", url: "/api/cron/graduation" });
     expect(res.statusCode).toBe(401);
   });
 
@@ -374,5 +434,102 @@ describe("GET /api/cron/digest", () => {
 
     expect(res.json().sent).toBe(0);
     expect(sendDigest).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/cron/graduation
+// ---------------------------------------------------------------------------
+
+async function makeGradApp(
+  classOptionsRepo: ClassOptionsRepo,
+  graduationRepo: GraduationRepo,
+  storage: Storage = fakeStorage(),
+) {
+  return makeApp(
+    fakeItemsRepo(), fakeReportsRepo(), storage, fakeMailer(), fakeAuthRepo(),
+    CRON_SECRET, classOptionsRepo, graduationRepo,
+  );
+}
+
+async function callGraduation(app: Awaited<ReturnType<typeof makeApp>>) {
+  return app.inject({
+    method: "GET",
+    url: "/api/cron/graduation",
+    headers: { authorization: `Bearer ${CRON_SECRET}` },
+  });
+}
+
+describe("GET /api/cron/graduation", () => {
+  it("nothing to purge → 200 with zero counters", async () => {
+    const app = await makeGradApp(
+      fakeClassOptionsRepo({ list: async () => [activeClass("a"), legacyClass("l")] }),
+      fakeGraduationRepo(),
+    );
+    const res = await callGraduation(app);
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ deletedClasses: 0, deletedFolders: 0, deletedItems: 0 });
+  });
+
+  it("only expired classes are purged (active + legacy kept)", async () => {
+    const deleteClass = vi.fn(async () => {});
+    const unlinkClass = vi.fn(async () => {});
+    const app = await makeGradApp(
+      fakeClassOptionsRepo({
+        list: async () => [activeClass("a"), legacyClass("l"), expiredClass("exp")],
+      }),
+      fakeGraduationRepo({ deleteClass, unlinkClass }),
+    );
+    const res = await callGraduation(app);
+    expect(res.statusCode).toBe(200);
+    expect(res.json().deletedClasses).toBe(1);
+    expect(deleteClass).toHaveBeenCalledOnce();
+    expect(deleteClass).toHaveBeenCalledWith("exp");
+    expect(unlinkClass).toHaveBeenCalledWith("exp");
+  });
+
+  it("orphaned folders + their S3 keys are deleted; users unassigned", async () => {
+    const deleteObjects = vi.fn(async () => {});
+    const unassignUsers = vi.fn(async () => {});
+    const deleteFoldersAndItems = vi.fn(async () => ({ folders: 1, items: 2 }));
+    const app = await makeGradApp(
+      fakeClassOptionsRepo({ list: async () => [expiredClass("exp")] }),
+      fakeGraduationRepo({
+        foldersForClass: async () => ["f-orphan"],
+        orphanFolders: async () => ["f-orphan"],
+        itemKeysForFolders: async () => [
+          { s3Key: "items/x/web.jpg", thumbKey: "items/x/thumb.jpg" },
+        ],
+        deleteFoldersAndItems,
+        unassignUsers,
+      }),
+      fakeStorage({ deleteObjects }),
+    );
+    const res = await callGraduation(app);
+    expect(res.json()).toEqual({ deletedClasses: 1, deletedFolders: 1, deletedItems: 2 });
+    expect(deleteObjects).toHaveBeenCalledOnce();
+    const [keys] = deleteObjects.mock.calls[0] as [string[]];
+    expect(keys).toEqual(["items/x/web.jpg", "items/x/thumb.jpg"]);
+    expect(deleteFoldersAndItems).toHaveBeenCalledWith(["f-orphan"]);
+    expect(unassignUsers).toHaveBeenCalledWith("exp");
+  });
+
+  it("shared folder still linked to a living class is kept (not orphaned)", async () => {
+    const deleteObjects = vi.fn(async () => {});
+    const deleteFoldersAndItems = vi.fn(async () => ({ folders: 0, items: 0 }));
+    const app = await makeGradApp(
+      fakeClassOptionsRepo({ list: async () => [expiredClass("exp")] }),
+      fakeGraduationRepo({
+        foldersForClass: async () => ["f-shared"],
+        // f-shared still has a folder_classes row (another class) → not orphaned.
+        orphanFolders: async () => [],
+        deleteFoldersAndItems,
+      }),
+      fakeStorage({ deleteObjects }),
+    );
+    const res = await callGraduation(app);
+    expect(res.json()).toEqual({ deletedClasses: 1, deletedFolders: 0, deletedItems: 0 });
+    expect(deleteObjects).not.toHaveBeenCalled();
+    expect(deleteFoldersAndItems).not.toHaveBeenCalled();
   });
 });
