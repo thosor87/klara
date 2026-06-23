@@ -42,7 +42,11 @@ export interface User {
   role: "admin" | "member";
   status: string;
   createdAt: string;
+  uploadCount?: number;
 }
+
+/** The admin list endpoint returns plain domain strings. */
+export type Domain = string;
 
 export interface ReportItem {
   id: string;
@@ -149,10 +153,47 @@ export const api = {
     return res.json();
   },
 
-  // Class options
+  // Class options (member dropdown)
   async getClassOptions(): Promise<ClassOption[]> {
     const data = await jsonOrNull(await fetch("/api/class-options"));
     return data ?? [];
+  },
+
+  // Class options (admin management)
+  async getAdminClassOptions(): Promise<ClassOption[]> {
+    const data = await jsonOrNull(await fetch("/api/admin/class-options"));
+    return data ?? [];
+  },
+  async addClassOption(label: string): Promise<ClassOption> {
+    const res = await fetch("/api/admin/class-options", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ label }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+  async removeClassOption(id: string): Promise<void> {
+    const res = await fetch(`/api/admin/class-options/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(await res.text());
+  },
+
+  // Domains (admin management)
+  async getDomains(): Promise<Domain[]> {
+    const data = await jsonOrNull(await fetch("/api/admin/domains"));
+    return data ?? [];
+  },
+  async addDomain(domain: string): Promise<void> {
+    const res = await fetch("/api/admin/domains", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ domain }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+  },
+  async removeDomain(domain: string): Promise<void> {
+    const res = await fetch(`/api/admin/domains/${encodeURIComponent(domain)}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(await res.text());
   },
 
   // Upload
