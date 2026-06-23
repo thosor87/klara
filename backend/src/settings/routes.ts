@@ -1,11 +1,25 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import type { DomainsRepo, ClassOptionsRepo } from "./repo.js";
+import type { DomainsRepo, ClassOptionsRepo, ClassOption } from "./repo.js";
+import { cohortInfo } from "../classes/cohort.js";
 
 export interface SettingsRoutesDeps {
   domainsRepo: DomainsRepo;
   classOptionsRepo: ClassOptionsRepo;
   requireUser: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+}
+
+/** Public shape of a class option: stored fields + computed label/status/schoolYear. */
+function toView(opt: ClassOption, now: Date) {
+  const info = cohortInfo(opt.track, opt.startYear, now, opt.label);
+  return {
+    id: opt.id,
+    track: opt.track,
+    startYear: opt.startYear,
+    label: info.label,
+    status: info.status,
+    schoolYear: info.schoolYear,
+  };
 }
 
 export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsRoutesDeps): void {
@@ -47,21 +61,46 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsRoute
 
   // GET /api/admin/class-options
   app.get("/api/admin/class-options", { preHandler: requireAdmin }, async (_req, reply) => {
+    const now = new Date();
     const options = await classOptionsRepo.list();
-    return reply.send(options);
+    return reply.send(options.map((o) => toView(o, now)));
   });
 
   // POST /api/admin/class-options
-  app.post<{ Body: { label?: string } }>(
+  app.post<{ Body: { label?: string; track?: string; startYear?: number | null } }>(
     "/api/admin/class-options",
     { preHandler: requireAdmin },
     async (req, reply) => {
-      const { label } = req.body ?? {};
-      if (!label || !label.trim()) {
-        return reply.code(400).send({ error: "label is required" });
+      const { label, track, startYear } = req.body ?? {};
+      // A class needs either a (legacy) label or a cohort start year.
+      const hasLabel = typeof label === "string" && label.trim().length > 0;
+      const hasStartYear = typeof startYear === "number";
+      if (!hasLabel && !hasStartYear) {
+        return reply.code(400).send({ error: "label or startYear is required" });
       }
-      const option = await classOptionsRepo.add(label.trim());
-      return reply.code(201).send(option);
+      const option = await classOptionsRepo.add({
+        label: hasLabel ? label!.trim() : "",
+        track: track ?? "",
+        startYear: hasStartYear ? startYear! : null,
+      });
+      return reply.code(201).send(toView(option, new Date()));
+    },
+  );
+
+  // PATCH /api/admin/class-options/:id
+  app.patch<{
+    Params: { id: string };
+    Body: { label?: string; track?: string; startYear?: number | null };
+  }>(
+    "/api/admin/class-options/:id",
+    { preHandler: requireAdmin },
+    async (req, reply) => {
+      const { label, track, startYear } = req.body ?? {};
+      const updated = await classOptionsRepo.update(req.params.id, { label, track, startYear });
+      if (!updated) {
+        return reply.code(404).send({ error: "not found" });
+      }
+      return reply.send(toView(updated, new Date()));
     },
   );
 
@@ -79,7 +118,8 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsRoute
 
   // GET /api/class-options
   app.get("/api/class-options", { preHandler: requireUser }, async (_req, reply) => {
+    const now = new Date();
     const options = await classOptionsRepo.list();
-    return reply.send(options);
+    return reply.send(options.map((o) => toView(o, now)));
   });
 }

@@ -40,14 +40,29 @@ function fakeDomainsRepo(over: Partial<DomainsRepo> = {}): DomainsRepo {
 function fakeClassOptionsRepo(over: Partial<ClassOptionsRepo> = {}): ClassOptionsRepo {
   let seq = 1;
   const store: ClassOption[] = [
-    { id: "co1", label: "1. Klasse", sortOrder: 1, createdAt: "x" },
-    { id: "co2", label: "2. Klasse", sortOrder: 2, createdAt: "x" },
+    { id: "co1", label: "1. Klasse", track: "", startYear: null, sortOrder: 1, createdAt: "x" },
+    { id: "co2", label: "2. Klasse", track: "", startYear: null, sortOrder: 2, createdAt: "x" },
   ];
   return {
     list: async () => [...store],
-    add: async (label) => {
-      const opt: ClassOption = { id: `co${++seq}`, label, sortOrder: 99, createdAt: "x" };
+    add: async (input) => {
+      const opt: ClassOption = {
+        id: `co${++seq}`,
+        label: input.label ?? "",
+        track: input.track ?? "",
+        startYear: input.startYear ?? null,
+        sortOrder: 99,
+        createdAt: "x",
+      };
       store.push(opt); return opt;
+    },
+    update: async (id, input) => {
+      const opt = store.find((o) => o.id === id);
+      if (!opt) return null;
+      if (input.label !== undefined) opt.label = input.label;
+      if (input.track !== undefined) opt.track = input.track;
+      if (input.startYear !== undefined) opt.startYear = input.startYear;
+      return opt;
     },
     remove: async (id) => { const i = store.findIndex((o) => o.id === id); if (i >= 0) store.splice(i, 1); },
     ...over,
@@ -160,9 +175,33 @@ describe("GET /api/admin/class-options", () => {
     const app = await makeApp(ADMIN);
     const res = await app.inject({ method: "GET", url: "/api/admin/class-options" });
     expect(res.statusCode).toBe(200);
-    const body = res.json() as ClassOption[];
+    const body = res.json() as Array<ClassOption & { status: string }>;
     expect(body.length).toBeGreaterThan(0);
-    expect(body[0]).toMatchObject({ id: expect.any(String), label: expect.any(String) });
+    expect(body[0]).toMatchObject({
+      id: expect.any(String),
+      label: expect.any(String),
+      track: expect.any(String),
+      status: expect.any(String),
+    });
+  });
+
+  it("computes status/label for a cohort vs legacy", async () => {
+    const sy = new Date().getUTCMonth() >= 7
+      ? new Date().getUTCFullYear()
+      : new Date().getUTCFullYear() - 1;
+    const repo = fakeClassOptionsRepo({
+      list: async () => [
+        { id: "leg", label: "Legacy A", track: "", startYear: null, sortOrder: 1, createdAt: "x" },
+        { id: "coh", label: "ignored", track: "m", startYear: sy, sortOrder: 2, createdAt: "x" },
+      ],
+    });
+    const app = await makeApp(ADMIN, undefined, repo);
+    const res = await app.inject({ method: "GET", url: "/api/admin/class-options" });
+    const body = res.json() as Array<ClassOption & { status: string; schoolYear: string | null }>;
+    const leg = body.find((b) => b.id === "leg")!;
+    const coh = body.find((b) => b.id === "coh")!;
+    expect(leg).toMatchObject({ status: "legacy", label: "Legacy A" });
+    expect(coh).toMatchObject({ status: "active", label: "1m", schoolYear: `${sy}/${sy + 1}` });
   });
 
   it("member → 403", async () => {
@@ -172,8 +211,41 @@ describe("GET /api/admin/class-options", () => {
   });
 });
 
+describe("PATCH /api/admin/class-options/:id", () => {
+  it("admin sets track + startYear on a legacy class → 200, becomes a cohort", async () => {
+    const sy = new Date().getUTCMonth() >= 7
+      ? new Date().getUTCFullYear()
+      : new Date().getUTCFullYear() - 1;
+    const repo = fakeClassOptionsRepo();
+    const app = await makeApp(ADMIN, undefined, repo);
+    const res = await app.inject({
+      method: "PATCH", url: "/api/admin/class-options/co1",
+      payload: { track: "m", startYear: sy },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ id: "co1", track: "m", startYear: sy, status: "active" });
+  });
+
+  it("unknown id → 404", async () => {
+    const app = await makeApp(ADMIN);
+    const res = await app.inject({
+      method: "PATCH", url: "/api/admin/class-options/nope",
+      payload: { track: "m" },
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("member → 403", async () => {
+    const app = await makeApp(MEMBER);
+    const res = await app.inject({
+      method: "PATCH", url: "/api/admin/class-options/co1", payload: { track: "m" },
+    });
+    expect(res.statusCode).toBe(403);
+  });
+});
+
 describe("POST /api/admin/class-options", () => {
-  it("admin adds option → 201", async () => {
+  it("admin adds legacy option (label only) → 201, status legacy", async () => {
     const repo = fakeClassOptionsRepo();
     const app = await makeApp(ADMIN, undefined, repo);
     const res = await app.inject({
@@ -181,12 +253,28 @@ describe("POST /api/admin/class-options", () => {
       payload: { label: "5. Klasse" },
     });
     expect(res.statusCode).toBe(201);
-    expect(res.json()).toMatchObject({ label: "5. Klasse" });
+    expect(res.json()).toMatchObject({ label: "5. Klasse", status: "legacy" });
     const list = await repo.list();
     expect(list.some((o) => o.label === "5. Klasse")).toBe(true);
   });
 
-  it("missing label → 400", async () => {
+  it("admin adds cohort (track + startYear) → 201 with computed label/status", async () => {
+    const repo = fakeClassOptionsRepo();
+    const app = await makeApp(ADMIN, undefined, repo);
+    const sy = new Date().getUTCMonth() >= 7
+      ? new Date().getUTCFullYear()
+      : new Date().getUTCFullYear() - 1;
+    const res = await app.inject({
+      method: "POST", url: "/api/admin/class-options",
+      payload: { track: "m", startYear: sy }, // grade 1 → active "1m"
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json()).toMatchObject({ track: "m", startYear: sy, status: "active", label: "1m" });
+    const list = await repo.list();
+    expect(list.some((o) => o.track === "m" && o.startYear === sy)).toBe(true);
+  });
+
+  it("missing label AND startYear → 400", async () => {
     const app = await makeApp(ADMIN);
     const res = await app.inject({ method: "POST", url: "/api/admin/class-options", payload: {} });
     expect(res.statusCode).toBe(400);
