@@ -994,7 +994,7 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
 
 .album-create-form { margin: 0; }
 .album-create-footer {
-  display: flex; align-items: center; gap: .75rem;
+  display: flex; align-items: center; justify-content: flex-end; gap: .75rem;
   margin-top: 1.6rem; padding-top: 1.3rem;
   border-top: 1px solid var(--purple-line);
 }
@@ -1008,6 +1008,10 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
 /* ---- Geteilte Felder: ein klarer vertikaler Stapel ---- */
 .album-form { display: flex; flex-direction: column; gap: 1.35rem; }
 .album-field { display: flex; flex-direction: column; gap: .55rem; }
+/* Klassen (links, wachsend) + Zeitraum (rechts, kompakt) in einer Zeile; bricht auf schmal um */
+.album-body { display: flex; gap: 1.35rem 2.5rem; flex-wrap: wrap; align-items: flex-start; }
+.album-body > .album-field:first-child { flex: 1 1 300px; }
+.album-body > .album-field:last-child { flex: 0 0 auto; }
 
 /* Einheitliches Label: kleines Kicker-Caps */
 .album-label {

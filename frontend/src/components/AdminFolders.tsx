@@ -15,9 +15,9 @@ type FormState = {
 
 const emptyForm: FormState = { name: "", startDate: "", endDate: "", classIds: [] };
 
-/** Chip label for a class in the picker: computed label, plus schoolYear for active cohorts. */
+/** Chip label for a class in the picker — just the computed label (e.g. "Klasse 2m"). */
 function chipLabel(c: ClassOption): string {
-  return c.status === "active" && c.schoolYear ? `${c.label} · ${c.schoolYear}` : c.label;
+  return c.label;
 }
 
 /** Small chips showing the classes an album is assigned to (labels via class-options). */
@@ -95,6 +95,7 @@ function FolderFormFields({
         />
       </div>
 
+      <div className="album-body">
       <div className="album-field">
         <div className="album-label-row">
           <span className="album-label">Für welche Klassen?</span>
@@ -150,6 +151,7 @@ function FolderFormFields({
             />
           </label>
         </div>
+      </div>
       </div>
     </div>
   );
