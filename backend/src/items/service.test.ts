@@ -16,6 +16,11 @@ const FOLDER: Folder = {
   enabled: true,
   createdBy: null,
   createdAt: "x",
+  coverItemId: null,
+  startDate: null,
+  endDate: null,
+  sortOrder: 0,
+  classIds: [],
 };
 
 const DISABLED_FOLDER: Folder = { ...FOLDER, id: "f-dis", enabled: false };
@@ -52,10 +57,14 @@ function fakeFoldersRepo(overrides: Partial<FoldersRepo> = {}): FoldersRepo {
   return {
     listAll: async () => [],
     listEnabled: async () => [],
+    listForClass: async () => [],
     create: async () => FOLDER,
     update: async () => null,
+    setClasses: async () => {},
+    isVisibleToClass: async () => true,
     findById: async () => null,
     itemCounts: async () => new Map(),
+    move: async () => false,
     ...overrides,
   };
 }

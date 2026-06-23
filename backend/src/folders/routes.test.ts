@@ -16,9 +16,11 @@ const MEMBER: User = {
   email: "member@grundschule.de",
   role: "member",
   status: "active",
-  classId: null,
+  classId: "class-a",
   createdAt: "2024-01-01",
 };
+
+const MEMBER_NO_CLASS: User = { ...MEMBER, id: "u-noclass", classId: null };
 
 const ADMIN: User = {
   id: "u-admin",
@@ -41,6 +43,7 @@ const FOLDER_ENABLED: Folder = {
   startDate: null,
   endDate: null,
   sortOrder: 0,
+  classIds: [],
 };
 
 const FOLDER_DISABLED: Folder = {
@@ -55,6 +58,7 @@ const FOLDER_DISABLED: Folder = {
   startDate: null,
   endDate: null,
   sortOrder: 1,
+  classIds: [],
 };
 
 const APPROVED_ITEM: Item = {
@@ -75,6 +79,7 @@ function fakeFoldersRepo(over: Partial<FoldersRepo> = {}): FoldersRepo {
   return {
     listAll: async () => [],
     listEnabled: async () => [],
+    listForClass: async () => [],
     create: async (d) => ({
       id: "f1",
       name: d.name,
@@ -87,8 +92,11 @@ function fakeFoldersRepo(over: Partial<FoldersRepo> = {}): FoldersRepo {
       startDate: d.startDate ?? null,
       endDate: d.endDate ?? null,
       sortOrder: 0,
+      classIds: d.classIds ?? [],
     }),
     update: async () => null,
+    setClasses: async () => {},
+    isVisibleToClass: async () => false,
     findById: async () => null,
     itemCounts: async () => new Map(),
     move: async () => false,
@@ -172,9 +180,9 @@ async function makeApp(
 // ---------------------------------------------------------------------------
 
 describe("GET /api/folders", () => {
-  it("member sees only enabled folders, each with itemCount", async () => {
+  it("member sees only folders for their class, each with itemCount", async () => {
     const repo = fakeFoldersRepo({
-      listEnabled: async () => [FOLDER_ENABLED],
+      listForClass: async () => [FOLDER_ENABLED],
       itemCounts: async () => new Map([["f-enabled", 5]]),
     });
     const app = await makeApp(repo, MEMBER);
@@ -187,6 +195,45 @@ describe("GET /api/folders", () => {
     expect(body[0].id).toBe("f-enabled");
     expect(body[0].itemCount).toBe(5);
     expect(body[0].enabled).toBe(true);
+  });
+
+  it("member list is filtered by their classId via listForClass", async () => {
+    let capturedClassId: string | null | undefined;
+    const repo = fakeFoldersRepo({
+      listForClass: async (classId) => {
+        capturedClassId = classId;
+        return [FOLDER_ENABLED];
+      },
+    });
+    const app = await makeApp(repo, MEMBER);
+
+    await app.inject({ method: "GET", url: "/api/folders" });
+
+    expect(capturedClassId).toBe("class-a");
+  });
+
+  it("member without a class → empty list", async () => {
+    // listForClass(null) returns [] in the real repo; the route must call it.
+    const repo = fakeFoldersRepo({
+      listForClass: async (classId) => (classId ? [FOLDER_ENABLED] : []),
+    });
+    const app = await makeApp(repo, MEMBER_NO_CLASS);
+
+    const res = await app.inject({ method: "GET", url: "/api/folders" });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual([]);
+  });
+
+  it("folder response carries classIds", async () => {
+    const shared: Folder = { ...FOLDER_ENABLED, classIds: ["class-a", "class-b"] };
+    const repo = fakeFoldersRepo({ listForClass: async () => [shared] });
+    const app = await makeApp(repo, MEMBER);
+
+    const res = await app.inject({ method: "GET", url: "/api/folders" });
+
+    const body = res.json() as Array<{ classIds: string[] }>;
+    expect(body[0].classIds).toEqual(["class-a", "class-b"]);
   });
 
   it("admin sees all folders (including disabled) with itemCount", async () => {
@@ -208,7 +255,7 @@ describe("GET /api/folders", () => {
   it("folder with cover item returns coverThumbUrl", async () => {
     const folderWithCover: Folder = { ...FOLDER_ENABLED, coverItemId: APPROVED_ITEM.id };
     const repo = fakeFoldersRepo({
-      listEnabled: async () => [folderWithCover],
+      listForClass: async () => [folderWithCover],
       itemCounts: async () => new Map(),
     });
     const itemsRepo = fakeItemsRepo({ findById: async () => APPROVED_ITEM });
@@ -223,7 +270,7 @@ describe("GET /api/folders", () => {
 
   it("folder without cover item returns coverThumbUrl: null", async () => {
     const repo = fakeFoldersRepo({
-      listEnabled: async () => [FOLDER_ENABLED],
+      listForClass: async () => [FOLDER_ENABLED],
       itemCounts: async () => new Map(),
     });
     const app = await makeApp(repo, MEMBER);
@@ -310,6 +357,32 @@ describe("POST /api/admin/folders", () => {
     expect(body.endDate).toBe("2024-06-16");
   });
 
+  it("admin creates folder with classIds → persisted + in response", async () => {
+    let captured: string[] | undefined;
+    const repo = fakeFoldersRepo({
+      create: async (d) => {
+        captured = d.classIds;
+        return {
+          id: "f-new", name: d.name, schoolYear: d.schoolYear, classLabel: d.classLabel,
+          enabled: true, createdBy: d.createdBy, createdAt: "x",
+          coverItemId: null, startDate: null, endDate: null, sortOrder: 0,
+          classIds: d.classIds ?? [],
+        };
+      },
+    });
+    const app = await makeApp(repo, ADMIN);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/folders",
+      payload: { name: "Ausflug", classIds: ["class-a", "class-b"] },
+    });
+
+    expect(res.statusCode).toBe(201);
+    expect(captured).toEqual(["class-a", "class-b"]);
+    expect((res.json() as Folder).classIds).toEqual(["class-a", "class-b"]);
+  });
+
   it("member → 403", async () => {
     const app = await makeApp(fakeFoldersRepo(), MEMBER);
     const res = await app.inject({
@@ -358,6 +431,28 @@ describe("PATCH /api/admin/folders/:id", () => {
     const body = res.json() as Folder;
     expect(body.name).toBe("Aktualisiert");
     expect(body.enabled).toBe(false);
+  });
+
+  it("admin updates classIds → passed through to repo.update", async () => {
+    let captured: string[] | undefined;
+    const updated: Folder = { ...FOLDER_ENABLED, classIds: ["class-c"] };
+    const repo = fakeFoldersRepo({
+      update: async (_id, data) => {
+        captured = data.classIds;
+        return updated;
+      },
+    });
+    const app = await makeApp(repo, ADMIN);
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/admin/folders/${FOLDER_ENABLED.id}`,
+      payload: { classIds: ["class-c"] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(captured).toEqual(["class-c"]);
+    expect((res.json() as Folder).classIds).toEqual(["class-c"]);
   });
 
   it("setting valid coverItemId (approved, same folder) → 200", async () => {

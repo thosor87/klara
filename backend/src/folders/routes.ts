@@ -22,7 +22,7 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
       const folders =
         req.user!.role === "admin"
           ? await foldersRepo.listAll()
-          : await foldersRepo.listEnabled();
+          : await foldersRepo.listForClass(req.user!.classId);
 
       const counts = await foldersRepo.itemCounts();
 
@@ -47,6 +47,7 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
             coverItemId: f.coverItemId,
             coverThumbUrl,
             itemCount: counts.get(f.id) ?? 0,
+            classIds: f.classIds,
           };
         }),
       );
@@ -64,12 +65,14 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
       coverItemId?: string;
       startDate?: string;
       endDate?: string;
+      classIds?: string[];
     };
   }>(
     "/api/admin/folders",
     { preHandler: requireAdmin },
     async (req, reply) => {
-      const { name, schoolYear, classLabel, coverItemId, startDate, endDate } = req.body ?? {};
+      const { name, schoolYear, classLabel, coverItemId, startDate, endDate, classIds } =
+        req.body ?? {};
 
       if (!name) {
         return reply.code(400).send({ error: "name is required" });
@@ -83,6 +86,7 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
         coverItemId: coverItemId ?? null,
         startDate: startDate ?? null,
         endDate: endDate ?? null,
+        classIds: Array.isArray(classIds) ? classIds : undefined,
       });
 
       return reply.code(201).send(folder);
@@ -100,13 +104,15 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
       coverItemId?: string | null;
       startDate?: string | null;
       endDate?: string | null;
+      classIds?: string[];
     };
   }>(
     "/api/admin/folders/:id",
     { preHandler: requireAdmin },
     async (req, reply) => {
       const { id } = req.params;
-      const { name, schoolYear, classLabel, enabled, coverItemId, startDate, endDate } = req.body ?? {};
+      const { name, schoolYear, classLabel, enabled, coverItemId, startDate, endDate, classIds } =
+        req.body ?? {};
 
       // Validate coverItemId: must be an approved item of THIS folder
       if (coverItemId !== undefined && coverItemId !== null) {
@@ -124,6 +130,7 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
         coverItemId,
         startDate,
         endDate,
+        classIds: Array.isArray(classIds) ? classIds : undefined,
       });
 
       if (!updated) {
