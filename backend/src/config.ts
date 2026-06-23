@@ -35,6 +35,8 @@ export const config = {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
   },
+  cronSecret: process.env.CRON_SECRET ?? "",
+  trashRetentionDays: Number(process.env.TRASH_RETENTION_DAYS ?? 30),
 };
 
 export { required };

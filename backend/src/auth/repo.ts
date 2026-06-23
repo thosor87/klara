@@ -23,6 +23,7 @@ export interface AuthRepo {
   listUsers(): Promise<User[]>;
   upsertActiveUser(email: string, role: UserRole): Promise<User>;
   updateUser(id: string, data: { status?: UserStatus; role?: UserRole }): Promise<User | null>;
+  listAdminEmails(): Promise<string[]>;
 }
 
 // Re-export MAX_CODE_ATTEMPTS so callers only need one import point.
@@ -138,6 +139,12 @@ export function createPostgresAuthRepo(sql: SqlTag): AuthRepo {
       const rows = await sql<Record<string, unknown>[]>`
         update users set ${sql(updates)} where id = ${id} returning *`;
       return rows.length ? mapUser(rows[0]) : null;
+    },
+
+    async listAdminEmails() {
+      const rows = await sql<{ email: string }[]>`
+        select email from users where role = 'admin' and status = 'active' order by created_at asc`;
+      return rows.map((r) => r.email);
     },
   };
 }

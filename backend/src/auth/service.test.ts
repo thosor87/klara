@@ -52,10 +52,17 @@ class FakeRepo implements AuthRepo {
     if (data.role !== undefined) u.role = data.role;
     return u;
   }
+  async listAdminEmails(): Promise<string[]> {
+    return this.users.filter((u) => u.role === "admin" && u.status === "active").map((u) => u.email);
+  }
 }
 class FakeMailer implements Mailer {
   sent: { to: string; code: string; link: string }[] = [];
+  digests: { to: string; pendingCount: number; openReports: number }[] = [];
   async sendLoginEmail(to: string, code: string, link: string) { this.sent.push({ to, code, link }); }
+  async sendDigest(to: string, data: { pendingCount: number; openReports: number }) {
+    this.digests.push({ to, ...data });
+  }
 }
 
 const DOMAINS = ["grundschule-xy.de"];

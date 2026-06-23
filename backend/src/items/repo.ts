@@ -23,6 +23,11 @@ export interface ItemWithFolderName extends Item {
   folderName: string;
 }
 
+export interface TrashedS3Keys {
+  s3Key: string;
+  thumbKey: string;
+}
+
 export interface ItemsRepo {
   insertPending(data: {
     id: string;
@@ -37,6 +42,10 @@ export interface ItemsRepo {
   setStatusApproved(ids: string[], approvedBy: string): Promise<number>;
   setStatusTrashed(ids: string[]): Promise<number>;
   findById(id: string): Promise<Item | null>;
+  listTrashed(): Promise<ItemWithFolderName[]>;
+  restore(id: string): Promise<boolean>;
+  countPending(): Promise<number>;
+  purgeTrashed(before: Date): Promise<TrashedS3Keys[]>;
 }
 
 function mapItem(r: Record<string, unknown>): Item {
@@ -116,6 +125,39 @@ export function createPostgresItemsRepo(sql: SqlTag): ItemsRepo {
       const rows = await sql<Record<string, unknown>[]>`
         SELECT * FROM items WHERE id = ${id}`;
       return rows.length ? mapItem(rows[0]) : null;
+    },
+
+    async listTrashed() {
+      const rows = await sql<Record<string, unknown>[]>`
+        SELECT items.*, folders.name AS folder_name
+        FROM items
+        JOIN folders ON items.folder_id = folders.id
+        WHERE items.status = 'trashed'
+        ORDER BY items.trashed_at DESC`;
+      return rows.map(mapItemWithFolderName);
+    },
+
+    async restore(id) {
+      const rows = await sql<{ id: string }[]>`
+        UPDATE items
+        SET status = 'pending', trashed_at = null
+        WHERE id = ${id} AND status = 'trashed'
+        RETURNING id`;
+      return rows.length > 0;
+    },
+
+    async countPending() {
+      const rows = await sql<{ count: string }[]>`
+        SELECT count(*)::int AS count FROM items WHERE status = 'pending'`;
+      return Number(rows[0]?.count ?? 0);
+    },
+
+    async purgeTrashed(before) {
+      const rows = await sql<{ s3_key: string; thumb_key: string }[]>`
+        DELETE FROM items
+        WHERE status = 'trashed' AND trashed_at < ${before}
+        RETURNING s3_key, thumb_key`;
+      return rows.map((r) => ({ s3Key: r.s3_key, thumbKey: r.thumb_key }));
     },
   };
 }

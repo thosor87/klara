@@ -1,5 +1,11 @@
+export interface DigestData {
+  pendingCount: number;
+  openReports: number;
+}
+
 export interface Mailer {
   sendLoginEmail(to: string, code: string, link: string): Promise<void>;
+  sendDigest(to: string, data: DigestData): Promise<void>;
 }
 
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
@@ -36,6 +42,34 @@ export function createSesMailer(): Mailer {
         } },
       }));
     },
+
+    async sendDigest(to, data) {
+      const { pendingCount, openReports } = data;
+      const appUrl = config.appBaseUrl;
+      const parts: string[] = [];
+      if (pendingCount > 0) parts.push(`${pendingCount} Foto${pendingCount === 1 ? "" : "s"} warte${pendingCount === 1 ? "t" : "n"} auf Freigabe`);
+      if (openReports > 0) parts.push(`${openReports} Meldung${openReports === 1 ? "" : "en"} offen`);
+      const summary = parts.join(", ");
+      const text =
+        `Hallo!\n\nEs gibt etwas zu tun in KlaRa: ${summary}.\n\n` +
+        `Direkt zur App: ${appUrl}\n\n` +
+        `Diese Mail wurde automatisch verschickt – du bekommst sie nur, wenn etwas offen ist.\n`;
+      const html =
+        `<p>Hallo!</p>` +
+        `<p>Es gibt etwas zu tun in <b>KlaRa</b>:</p>` +
+        `<ul>${pendingCount > 0 ? `<li>${pendingCount} Foto${pendingCount === 1 ? "" : "s"} warte${pendingCount === 1 ? "t" : "n"} auf Freigabe</li>` : ""}` +
+        `${openReports > 0 ? `<li>${openReports} Meldung${openReports === 1 ? "" : "en"} offen</li>` : ""}</ul>` +
+        `<p><a href="${appUrl}">Direkt zur App →</a></p>` +
+        `<p style="color:#888;font-size:12px">Diese Mail wurde automatisch verschickt – du bekommst sie nur, wenn etwas offen ist.</p>`;
+      await client.send(new SendEmailCommand({
+        FromEmailAddress: config.ses.fromAddress,
+        Destination: { ToAddresses: [to] },
+        Content: { Simple: {
+          Subject: { Data: "KlaRa: Es gibt etwas zu tun" },
+          Body: { Text: { Data: text }, Html: { Data: html } },
+        } },
+      }));
+    },
   };
 }
 
@@ -44,6 +78,9 @@ export function createConsoleMailer(): Mailer {
   return {
     async sendLoginEmail(to, code, link) {
       console.log(`[MAIL→${to}] Code ${code}  Link ${link}`);
+    },
+    async sendDigest(to, data) {
+      console.log(`[DIGEST→${to}] pending=${data.pendingCount} openReports=${data.openReports}`);
     },
   };
 }

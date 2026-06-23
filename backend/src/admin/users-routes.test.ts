@@ -54,6 +54,7 @@ function fakeAuthRepo(over: Partial<AuthRepo> = {}): AuthRepo {
       createdAt: "x",
     }),
     updateUser: async () => null,
+    listAdminEmails: async () => [],
     ...over,
   };
 }
