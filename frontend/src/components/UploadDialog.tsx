@@ -44,16 +44,15 @@ export function UploadDialog({ folderId, onClose, onUploaded }: {
       try {
         if (isVideo) {
           await validateVideo(file); // throws a user-facing message if too big/long
-          updated[i] = { ...updated[i], progress: "Erstelle Vorschau …" };
-          setFiles([...updated]);
-          const thumb = await makeVideoThumb(file);
           updated[i] = { ...updated[i], progress: "Lädt Video hoch …" };
           setFiles([...updated]);
 
           const presign = await api.presignUpload(folderId, file.type, "video");
+          // Generate the thumbnail in parallel with the (slow) video upload, so the
+          // dialog doesn't wait on frame extraction before the upload even starts.
           await Promise.all([
             putToS3(presign.webUploadUrl, file, file.type),
-            putToS3(presign.thumbUploadUrl, thumb, "image/jpeg"),
+            makeVideoThumb(file).then((thumb) => putToS3(presign.thumbUploadUrl, thumb, "image/jpeg")),
           ]);
           await api.confirmUpload(folderId, presign.itemId, undefined, "video");
         } else {
