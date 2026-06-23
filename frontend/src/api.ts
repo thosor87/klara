@@ -106,6 +106,8 @@ export const api = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ itemId, caption }),
     });
+    // 409 already_confirmed means the item exists — treat as success
+    if (res.status === 409) return res.json();
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },

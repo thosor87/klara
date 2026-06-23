@@ -11,21 +11,29 @@ export function UploadDialog({ folderId, onClose, onUploaded }: {
 }) {
   const [files, setFiles] = useState<FileState[]>([]);
   const [busy, setBusy] = useState(false);
-  const [allDone, setAllDone] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const allDone = files.length > 0 && files.every((f) => f.status === "done");
+  const hasRetryable = files.some((f) => f.status === "pending" || f.status === "error");
 
   function pickFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []).filter((f) => f.type.startsWith("image/"));
     setFiles(picked.map((file) => ({ file, status: "pending", progress: "" })));
-    setAllDone(false);
   }
 
   async function startUpload() {
     if (!files.length || busy) return;
     setBusy(true);
 
-    const updated = [...files];
+    // Reset errors to pending so they get retried; skip already-done files
+    const updated = files.map((f) =>
+      f.status === "error" ? { ...f, status: "pending" as const, progress: "" } : { ...f }
+    );
+    setFiles([...updated]);
+
     for (let i = 0; i < updated.length; i++) {
+      if (updated[i].status === "done") continue;
+
       updated[i] = { ...updated[i], status: "uploading", progress: "Verkleinere …" };
       setFiles([...updated]);
 
@@ -49,9 +57,7 @@ export function UploadDialog({ folderId, onClose, onUploaded }: {
     }
 
     setBusy(false);
-    const anySucceeded = updated.some((f) => f.status === "done");
-    if (anySucceeded) {
-      setAllDone(true);
+    if (updated.some((f) => f.status === "done")) {
       onUploaded();
     }
   }
@@ -92,9 +98,9 @@ export function UploadDialog({ folderId, onClose, onUploaded }: {
 
         <div className="dialog-actions">
           <button onClick={onClose} className="btn-ghost-dark" disabled={busy}>Schließen</button>
-          {files.length > 0 && !allDone && (
-            <button onClick={startUpload} disabled={busy || !files.some(f => f.status === "pending")}>
-              {busy ? "Lädt hoch …" : `${files.length} Foto${files.length !== 1 ? "s" : ""} hochladen`}
+          {files.length > 0 && hasRetryable && (
+            <button onClick={startUpload} disabled={busy}>
+              {busy ? "Lädt hoch …" : `${files.filter(f => f.status !== "done").length} Foto${files.filter(f => f.status !== "done").length !== 1 ? "s" : ""} hochladen`}
             </button>
           )}
         </div>
