@@ -38,7 +38,7 @@ describe("cohortInfo", () => {
     const info = cohortInfo("m", 2024, d("2025-09-01T00:00:00Z"));
     expect(info.status).toBe("active");
     expect(info.grade).toBe(2);
-    expect(info.label).toBe("2m");
+    expect(info.label).toBe("Klasse 2m");
     expect(info.schoolYear).toBe("2025/2026");
     expect(info.daysSinceGraduation).toBeNull();
   });
@@ -47,7 +47,7 @@ describe("cohortInfo", () => {
     const info = cohortInfo("", 2025, d("2025-08-01T00:00:00Z"));
     expect(info.status).toBe("active");
     expect(info.grade).toBe(1);
-    expect(info.label).toBe("1");
+    expect(info.label).toBe("Klasse 1");
     expect(info.schoolYear).toBe("2025/2026");
   });
 
@@ -56,7 +56,7 @@ describe("cohortInfo", () => {
     const info = cohortInfo("m", 2022, d("2025-09-01T00:00:00Z"));
     expect(info.status).toBe("active");
     expect(info.grade).toBe(4);
-    expect(info.label).toBe("4m");
+    expect(info.label).toBe("Klasse 4m");
   });
 
   it("alumni: < 90 days past gradAug (1 Aug of startYear+4)", () => {

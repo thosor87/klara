@@ -77,7 +77,7 @@ export function cohortInfo(
     return {
       grade,
       status: "active",
-      label: `${grade}${track}`,
+      label: `Klasse ${grade}${track}`,
       schoolYear: `${sy}/${sy + 1}`,
       daysSinceGraduation: null,
     };
