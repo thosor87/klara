@@ -379,6 +379,24 @@ button:disabled { opacity: .5; cursor: default; }
 .dialog-actions { display: flex; gap: .75rem; margin-top: 1.25rem; justify-content: flex-end; flex-wrap: wrap; }
 .dialog-actions button { width: auto; margin: 0; }
 
+/* ---------- Confirm dialog ---------- */
+.confirm-card { max-width: 420px; }
+.confirm-card .muted { margin: 0; }
+.btn-danger { background: #dc2626; color: #fff; border: none; }
+.btn-danger:hover:not(:disabled) { background: #b91c1c; }
+
+/* Inline error notice (non-popup alternative to window.alert) */
+.inline-error {
+  margin: .75rem 0 0; padding: .65rem .85rem; border-radius: 10px;
+  background: #fff0f0; border: 1px solid #f3c4c4; color: var(--danger);
+  font-size: .9rem; display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+}
+.inline-error button {
+  background: transparent; color: var(--danger); width: auto; margin: 0;
+  padding: .1rem .4rem; font-size: 1.1rem; line-height: 1;
+}
+.inline-error button:hover:not(:disabled) { background: transparent; opacity: .7; }
+
 /* ---------- Admin sections ---------- */
 .admin-section { display: flex; flex-direction: column; gap: .75rem; }
 .admin-section-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; }

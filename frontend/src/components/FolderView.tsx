@@ -5,6 +5,7 @@ import { UploadDialog } from "./UploadDialog";
 import { Gallery } from "./Gallery";
 import { Lightbox } from "./Lightbox";
 import { ShareDialog } from "./ShareDialog";
+import { useConfirm } from "./ConfirmDialog";
 
 type SortOrder = "newest" | "oldest";
 
@@ -20,6 +21,8 @@ export function FolderView() {
   const [showShare, setShowShare] = useState(false);
   const [sort, setSort] = useState<SortOrder>("newest");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteErr, setDeleteErr] = useState("");
+  const { ask, dialog } = useConfirm();
 
   function loadItems() {
     setLoading(true);
@@ -78,28 +81,36 @@ export function FolderView() {
 
   async function handleDelete(id: string) {
     if (deletingId) return;
-    if (!window.confirm("Dieses Foto wirklich löschen? Es ist noch nicht freigegeben.")) return;
+    const ok = await ask({
+      title: "Foto löschen",
+      message: "Dieses Foto wirklich löschen? Es ist noch nicht freigegeben.",
+      confirmLabel: "Löschen",
+      danger: true,
+    });
+    if (!ok) return;
+    setDeleteErr("");
     setDeletingId(id);
     try {
       await api.deleteItem(id);
       loadItems();
     } catch {
-      window.alert("Löschen fehlgeschlagen. Bitte erneut versuchen.");
+      setDeleteErr("Löschen fehlgeschlagen. Bitte erneut versuchen.");
     } finally {
       setDeletingId(null);
     }
   }
 
-  const title = folder?.name ?? "Ordner";
+  const title = folder?.name ?? "Album";
   const meta = folder && (folder.schoolYear || folder.classLabel)
     ? [folder.schoolYear, folder.classLabel].filter(Boolean).join(" · ")
     : "";
 
   return (
     <div className="folder-view">
+      {dialog}
       <div className="folder-view-header">
-        <Link to="/" className="btn-back" aria-label="Zurück zur Ordnerübersicht">
-          <span aria-hidden="true">←</span> Ordner
+        <Link to="/" className="btn-back" aria-label="Zurück zur Albenübersicht">
+          <span aria-hidden="true">←</span> Alben
         </Link>
         <div className="folder-view-titlebox">
           <h1 className="folder-view-title">{title}</h1>
@@ -118,6 +129,12 @@ export function FolderView() {
       {!loading && !error && myPending.length > 0 && (
         <section className="pending-section">
           <h2 className="pending-section-title">Deine Uploads — wartet auf Freigabe</h2>
+          {deleteErr && (
+            <p className="inline-error" role="alert">
+              <span>{deleteErr}</span>
+              <button type="button" aria-label="Hinweis schließen" onClick={() => setDeleteErr("")}>×</button>
+            </p>
+          )}
           <ul className="pending-grid">
             {myPending.map((item) => (
               <li key={item.id} className="pending-tile">

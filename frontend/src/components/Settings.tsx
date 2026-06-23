@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { api, type Domain, type ClassOption } from "../api";
+import { useConfirm } from "./ConfirmDialog";
 
-function DomainsCard() {
+export function DomainsCard() {
   const [domains, setDomains] = useState<Domain[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const { ask, dialog } = useConfirm();
 
   useEffect(() => {
     api
@@ -40,7 +42,13 @@ function DomainsCard() {
   }
 
   async function remove(domain: string) {
-    if (!window.confirm(`Domain „${domain}" wirklich entfernen?`)) return;
+    const ok = await ask({
+      title: "Domain entfernen",
+      message: `Domain „${domain}" wirklich entfernen? Adressen dieser Domain können sich dann nicht mehr neu anmelden.`,
+      confirmLabel: "Entfernen",
+      danger: true,
+    });
+    if (!ok) return;
     setBusy(true);
     setErr("");
     try {
@@ -55,6 +63,7 @@ function DomainsCard() {
 
   return (
     <section className="settings-card">
+      {dialog}
       <h2>Erlaubte Domains</h2>
       <p className="muted settings-hint">
         Adressen dieser Domains dürfen sich anmelden und erhalten einen Code. Alle anderen brauchen
@@ -98,13 +107,14 @@ function DomainsCard() {
   );
 }
 
-function ClassesCard() {
+export function ClassesCard() {
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const { ask, dialog } = useConfirm();
 
   useEffect(() => {
     api
@@ -140,7 +150,13 @@ function ClassesCard() {
   }
 
   async function remove(option: ClassOption) {
-    if (!window.confirm(`Klasse „${option.label}" wirklich entfernen?`)) return;
+    const ok = await ask({
+      title: "Klasse entfernen",
+      message: `Klasse „${option.label}" wirklich aus der Auswahlliste entfernen?`,
+      confirmLabel: "Entfernen",
+      danger: true,
+    });
+    if (!ok) return;
     setBusy(true);
     setErr("");
     try {
@@ -155,9 +171,10 @@ function ClassesCard() {
 
   return (
     <section className="settings-card">
+      {dialog}
       <h2>Klassen</h2>
       <p className="muted settings-hint">
-        Diese Bezeichnungen stehen beim Anlegen eines Ordners im Klassen-Auswahlfeld zur Verfügung.
+        Diese Bezeichnungen stehen beim Anlegen eines Albums im Klassen-Auswahlfeld zur Verfügung.
       </p>
 
       <form className="settings-add-form" onSubmit={add}>
