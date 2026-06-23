@@ -73,11 +73,29 @@ export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): 
       try {
         const items = await itemsService.listFolderItems(req.params.folderId, {
           isAdmin: req.user!.role === "admin",
+          userId: req.user!.id,
         });
         return reply.send(items);
       } catch (err) {
         if (err instanceof AppError && err.code === "folder_not_found") {
           return reply.code(404).send({ error: "folder_not_found" });
+        }
+        throw err;
+      }
+    },
+  );
+
+  // DELETE /api/items/:id — delete own pending item (requireUser)
+  app.delete<{ Params: { id: string } }>(
+    "/api/items/:id",
+    { preHandler: requireUser },
+    async (req, reply) => {
+      try {
+        const result = await itemsService.deleteOwnPending(req.params.id, req.user!.id);
+        return reply.send(result);
+      } catch (err) {
+        if (err instanceof AppError && err.code === "not_allowed") {
+          return reply.code(403).send({ error: "not_allowed" });
         }
         throw err;
       }

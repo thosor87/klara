@@ -261,17 +261,17 @@ describe("confirmUpload", () => {
 describe("listFolderItems", () => {
   const APPROVED_ITEM: Item = { ...ITEM, id: "item-approved", status: "approved" };
 
-  it("member (isAdmin=false) calls listByFolder with approved status only", async () => {
-    const listByFolder = vi.fn(async () => [APPROVED_ITEM]);
+  it("member (isAdmin=false) calls listForMember with approved + own pending", async () => {
+    const listForMember = vi.fn(async () => [APPROVED_ITEM]);
     const svc = createItemsService({
-      itemsRepo: fakeItemsRepo({ listByFolder }),
+      itemsRepo: fakeItemsRepo({ listForMember }),
       foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER }),
       storage: fakeStorage(),
     });
 
-    await svc.listFolderItems("f1", { isAdmin: false });
+    await svc.listFolderItems("f1", { isAdmin: false, userId: "u1" });
 
-    expect(listByFolder).toHaveBeenCalledWith("f1", ["approved"]);
+    expect(listForMember).toHaveBeenCalledWith("f1", "u1");
   });
 
   it("admin (isAdmin=true) calls listByFolder with all statuses", async () => {
@@ -290,18 +290,20 @@ describe("listFolderItems", () => {
     expect(call[1]).toHaveLength(3);
   });
 
-  it("attaches thumbUrl and webUrl to each item", async () => {
+  it("attaches thumbUrl, webUrl and mine to each item", async () => {
     const svc = createItemsService({
-      itemsRepo: fakeItemsRepo({ listByFolder: async () => [APPROVED_ITEM] }),
+      itemsRepo: fakeItemsRepo({ listForMember: async () => [APPROVED_ITEM] }),
       foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER }),
       storage: fakeStorage(),
     });
 
-    const result = await svc.listFolderItems("f1", { isAdmin: false });
+    const result = await svc.listFolderItems("f1", { isAdmin: false, userId: "u1" });
 
     expect(result).toHaveLength(1);
     expect(result[0].thumbUrl).toBe(`https://s3.example.com/get/${APPROVED_ITEM.thumbKey}`);
     expect(result[0].webUrl).toBe(`https://s3.example.com/get/${APPROVED_ITEM.s3Key}`);
+    // APPROVED_ITEM.uploadedBy = "u1", userId = "u1" → mine=true
+    expect(result[0].mine).toBe(true);
   });
 
   // Fix 1: member listing must respect folder enabled-state
@@ -331,15 +333,15 @@ describe("listFolderItems", () => {
     });
   });
 
-  it("member listing an enabled folder returns approved items", async () => {
-    const listByFolder = vi.fn(async () => [APPROVED_ITEM]);
+  it("member listing an enabled folder returns approved items via listForMember", async () => {
+    const listForMember = vi.fn(async () => [APPROVED_ITEM]);
     const svc = createItemsService({
-      itemsRepo: fakeItemsRepo({ listByFolder }),
+      itemsRepo: fakeItemsRepo({ listForMember }),
       foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER }),
       storage: fakeStorage(),
     });
 
-    const result = await svc.listFolderItems("f1", { isAdmin: false });
+    const result = await svc.listFolderItems("f1", { isAdmin: false, userId: "u1" });
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe(APPROVED_ITEM.id);
@@ -419,5 +421,77 @@ describe("reject", () => {
 
     expect(setStatusTrashed).toHaveBeenCalledWith(["id1", "id2", "id3"]);
     expect(result).toEqual({ rejected: 3 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// deleteOwnPending
+// ---------------------------------------------------------------------------
+
+describe("deleteOwnPending", () => {
+  const PENDING_ITEM: Item = { ...ITEM, status: "pending", uploadedBy: "u1" };
+  const APPROVED_ITEM: Item = { ...ITEM, id: "i-approved", status: "approved", uploadedBy: "u1" };
+
+  it("deletes S3 objects and DB row for own pending item → { deleted: true }", async () => {
+    const deleteObjects = vi.fn(async () => {});
+    const deleteById = vi.fn(async () => ({ s3Key: PENDING_ITEM.s3Key, thumbKey: PENDING_ITEM.thumbKey }));
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo({ findById: async () => PENDING_ITEM, deleteById }),
+      foldersRepo: fakeFoldersRepo(),
+      storage: fakeStorage({ deleteObjects }),
+    });
+
+    const result = await svc.deleteOwnPending("item1", "u1");
+
+    expect(deleteObjects).toHaveBeenCalledWith([PENDING_ITEM.s3Key, PENDING_ITEM.thumbKey]);
+    expect(deleteById).toHaveBeenCalledWith("item1");
+    expect(result).toEqual({ deleted: true });
+  });
+
+  it("throws not_allowed when item not found", async () => {
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo({ findById: async () => null }),
+      foldersRepo: fakeFoldersRepo(),
+      storage: fakeStorage(),
+    });
+    await expect(svc.deleteOwnPending("missing", "u1")).rejects.toMatchObject({
+      name: "AppError", code: "not_allowed",
+    });
+  });
+
+  it("throws not_allowed when item belongs to another user", async () => {
+    const otherUserItem: Item = { ...PENDING_ITEM, uploadedBy: "u-other" };
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo({ findById: async () => otherUserItem }),
+      foldersRepo: fakeFoldersRepo(),
+      storage: fakeStorage(),
+    });
+    await expect(svc.deleteOwnPending("item1", "u1")).rejects.toMatchObject({
+      name: "AppError", code: "not_allowed",
+    });
+  });
+
+  it("throws not_allowed when item is already approved (not pending)", async () => {
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo({ findById: async () => APPROVED_ITEM }),
+      foldersRepo: fakeFoldersRepo(),
+      storage: fakeStorage(),
+    });
+    await expect(svc.deleteOwnPending("i-approved", "u1")).rejects.toMatchObject({
+      name: "AppError", code: "not_allowed",
+    });
+  });
+
+  it("does NOT call deleteObjects or deleteById on not_allowed", async () => {
+    const deleteObjects = vi.fn(async () => {});
+    const deleteById = vi.fn(async () => null);
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo({ findById: async () => null, deleteById }),
+      foldersRepo: fakeFoldersRepo(),
+      storage: fakeStorage({ deleteObjects }),
+    });
+    await expect(svc.deleteOwnPending("missing", "u1")).rejects.toMatchObject({ code: "not_allowed" });
+    expect(deleteObjects).not.toHaveBeenCalled();
+    expect(deleteById).not.toHaveBeenCalled();
   });
 });

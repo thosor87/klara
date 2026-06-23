@@ -53,6 +53,7 @@ function fakeService(over: Partial<ItemsService> = {}): ItemsService {
     listPending: async () => [],
     approve: async (ids) => ({ approved: ids.length }),
     reject: async (ids) => ({ rejected: ids.length }),
+    deleteOwnPending: async () => ({ deleted: true }),
     ...over,
   };
 }
@@ -221,13 +222,13 @@ describe("GET /api/folders/:folderId/items", () => {
     expect(res.json()).toEqual([]);
   });
 
-  it("as admin → calls listFolderItems with { isAdmin: true }", async () => {
+  it("as admin → calls listFolderItems with { isAdmin: true, userId }", async () => {
     const listFolderItems = vi.fn(async () => []);
     const app = await makeApp(fakeService({ listFolderItems }), ADMIN);
 
     await app.inject({ method: "GET", url: "/api/folders/f1/items" });
 
-    expect(listFolderItems).toHaveBeenCalledWith("f1", { isAdmin: true });
+    expect(listFolderItems).toHaveBeenCalledWith("f1", { isAdmin: true, userId: ADMIN.id });
   });
 
   // Fix 1: folder_not_found from service → 404 { error: 'folder_not_found' }
@@ -335,5 +336,40 @@ describe("POST /api/admin/items/reject", () => {
       payload: { ids: [] },
     });
     expect(emptyIds.statusCode).toBe(400);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/items/:id
+// ---------------------------------------------------------------------------
+
+describe("DELETE /api/items/:id", () => {
+  it("as user with own pending item → 200 + { deleted: true }", async () => {
+    const app = await makeApp(fakeService(), MEMBER);
+
+    const res = await app.inject({ method: "DELETE", url: "/api/items/item1" });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ deleted: true });
+  });
+
+  it("not_allowed AppError → 403", async () => {
+    const service = fakeService({
+      deleteOwnPending: async () => {
+        throw new AppError("not_allowed", "not allowed");
+      },
+    });
+    const app = await makeApp(service, MEMBER);
+
+    const res = await app.inject({ method: "DELETE", url: "/api/items/item1" });
+
+    expect(res.statusCode).toBe(403);
+    expect(res.json()).toEqual({ error: "not_allowed" });
+  });
+
+  it("unauthenticated → 401", async () => {
+    const app = await makeApp(fakeService(), null);
+    const res = await app.inject({ method: "DELETE", url: "/api/items/item1" });
+    expect(res.statusCode).toBe(401);
   });
 });
