@@ -197,7 +197,22 @@ button:disabled { opacity: .5; cursor: default; }
 .folder-view-titlebox { flex: 1 1 200px; min-width: 0; }
 .folder-view-title { margin: 0; font-size: clamp(1.5rem, 4.5vw, 2.2rem); color: var(--ink); line-height: 1.1; }
 .folder-view-meta { margin: .25rem 0 0; }
-.folder-view-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+.folder-view-actions { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+/* Teilen = kompakter Icon-Button, Hochladen = primär mit Icon — als Paar gruppiert, gleich hoch */
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 46px; height: 46px; margin: 0; padding: 0; border-radius: 999px;
+  background: var(--purple-tint); color: var(--purple); border: 1px solid var(--purple-line);
+  cursor: pointer; transition: background .15s var(--ease);
+}
+.icon-btn:hover:not(:disabled) { background: #ece5fa; }
+.btn-upload {
+  display: inline-flex; align-items: center; gap: .5rem; white-space: nowrap;
+  height: 46px; margin: 0; padding: 0 1.25rem; border-radius: 999px;
+  background: var(--purple); color: #fff; font-weight: 600; border: none; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(67,45,138,.18); transition: background .15s var(--ease);
+}
+.btn-upload:hover:not(:disabled) { background: var(--purple-deep); }
 .btn-back {
   display: inline-flex; align-items: center; gap: .35rem; text-decoration: none;
   background: var(--paper-card); border: 1px solid var(--purple-line); color: var(--purple);
@@ -554,8 +569,7 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
   .gallery-caption { display: none; } /* tap to open instead of hover on touch */
   .lb-btn-label { display: none; }    /* icons only, keep the bar compact */
   .lb-icon-btn { padding: .5rem; width: 44px; justify-content: center; }
-  .folder-view-actions { width: 100%; }
-  .folder-view-actions .btn-inline { flex: 1; }
+  .folder-view-actions { width: 100%; justify-content: flex-end; }
   .lightbox-stage { padding: .25rem; }
   .lightbox-img { border-radius: 4px; }
 }
