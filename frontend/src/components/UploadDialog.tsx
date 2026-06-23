@@ -119,7 +119,7 @@ export function UploadDialog({ folderId, onClose, onUploaded }: {
         )}
 
         {allDone && (
-          <p className="upload-done" role="status">Alle Fotos hochgeladen — sie warten auf Freigabe.</p>
+          <p className="upload-done" role="status">Alles hochgeladen — wartet auf Freigabe.</p>
         )}
 
         <div className="dialog-actions">
