@@ -4,11 +4,10 @@ import { api, type Me } from "./api";
 import { Layout } from "./components/Layout";
 import { FolderList } from "./components/FolderList";
 import { FolderView } from "./components/FolderView";
-import { ApprovalQueue } from "./components/ApprovalQueue";
+import { Moderation } from "./components/Moderation";
 import { AdminFolders } from "./components/AdminFolders";
 import { AdminUsers } from "./components/AdminUsers";
 import { AdminClasses } from "./components/Settings";
-import { ReportsQueue } from "./components/ReportsQueue";
 import { Footer } from "./components/Footer";
 import { Impressum } from "./components/Impressum";
 import { Datenschutz } from "./components/Datenschutz";
@@ -42,12 +41,10 @@ function AppRoutes({ me, onLogout }: { me: Me; onLogout: () => void }) {
         <Route path="/anleitung" element={<Anleitung />} />
         <Route
           path="/freigabe"
-          element={<RequireAdmin me={me}><ApprovalQueue /></RequireAdmin>}
+          element={<RequireAdmin me={me}><Moderation /></RequireAdmin>}
         />
-        <Route
-          path="/meldungen"
-          element={<RequireAdmin me={me}><ReportsQueue /></RequireAdmin>}
-        />
+        {/* Old standalone reports route → combined page, Meldungen tab. */}
+        <Route path="/meldungen" element={<Navigate to="/freigabe?tab=meldungen" replace />} />
         <Route
           path="/verwaltung/ordner"
           element={<RequireAdmin me={me}><AdminFolders /></RequireAdmin>}

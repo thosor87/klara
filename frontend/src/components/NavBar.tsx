@@ -12,12 +12,9 @@ export function NavBar({ role, pendingCount }: {
       <NavLink to="/" end className={cls}>Alben</NavLink>
       {role === "admin" && (
         <NavLink to="/freigabe" className={cls}>
-          Freigabe
+          Zu prüfen
           {pendingCount > 0 && <span className="badge">{pendingCount}</span>}
         </NavLink>
-      )}
-      {role === "admin" && (
-        <NavLink to="/meldungen" className={cls}>Meldungen</NavLink>
       )}
       {role === "admin" && (
         <NavLink to="/verwaltung/ordner" className={cls}>Alben verwalten</NavLink>

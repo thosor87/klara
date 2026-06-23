@@ -143,6 +143,29 @@ button:disabled { opacity: .5; cursor: default; }
 }
 .nav-item.active .badge { background: #fff; color: var(--purple-deep); }
 
+/* ---------- Moderation tabs (combined Freigabe + Meldungen) ---------- */
+.moderation-tabs {
+  display: flex; gap: .4rem; flex-wrap: wrap;
+  border-bottom: 1px solid var(--purple-line);
+  margin: 0 0 1.4rem; padding-bottom: 0;
+}
+.moderation-tab {
+  background: transparent; border: none; color: var(--purple);
+  font: inherit; font-weight: 600; cursor: pointer; width: auto; margin: 0;
+  padding: .6rem 1rem; border-radius: 12px 12px 0 0;
+  display: inline-flex; align-items: center;
+  border-bottom: 3px solid transparent; margin-bottom: -1px;
+  transition: background .15s var(--ease), color .15s var(--ease), border-color .15s var(--ease);
+}
+.moderation-tab:hover:not(.active) { background: var(--purple-tint); }
+.moderation-tab.active { color: var(--purple-deep); border-bottom-color: var(--purple); }
+.moderation-tab-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent); color: #3a2600; border-radius: 999px;
+  font-size: .7rem; font-weight: 800; min-width: 18px; height: 18px;
+  padding: 0 5px; margin-left: .45rem;
+}
+
 /* ---------- Page headings ---------- */
 .page-head { margin: 0 0 1.4rem; }
 .page-kicker { margin: 0; color: var(--purple); font-weight: 600; font-size: .8rem;

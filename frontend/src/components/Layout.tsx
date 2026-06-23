@@ -33,7 +33,7 @@ export function Layout({ me, onLogout }: { me: Me; onLogout: () => void }) {
       <TopBar email={me.email} onLogout={onLogout} />
       <NavBar role={me.role} pendingCount={badgeCount} />
       <main className="app-content">
-        <Outlet context={{ refreshPending: refreshBadge }} />
+        <Outlet context={{ refreshPending: refreshBadge, me }} />
       </main>
       <Footer />
     </div>
