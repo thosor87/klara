@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { api } from "../api";
-import { makeWebAndThumb, putToS3 } from "../upload";
+import { makeWebAndThumb, putToS3, isVideoFile, validateVideo, makeVideoThumb } from "../upload";
 
 type FileState = { file: File; status: "pending" | "uploading" | "done" | "error"; progress: string };
 
@@ -17,7 +17,9 @@ export function UploadDialog({ folderId, onClose, onUploaded }: {
   const hasRetryable = files.some((f) => f.status === "pending" || f.status === "error");
 
   function pickFiles(e: React.ChangeEvent<HTMLInputElement>) {
-    const picked = Array.from(e.target.files ?? []).filter((f) => f.type.startsWith("image/"));
+    const picked = Array.from(e.target.files ?? []).filter(
+      (f) => f.type.startsWith("image/") || f.type.startsWith("video/"),
+    );
     setFiles(picked.map((file) => ({ file, status: "pending", progress: "" })));
   }
 
@@ -34,24 +36,45 @@ export function UploadDialog({ folderId, onClose, onUploaded }: {
     for (let i = 0; i < updated.length; i++) {
       if (updated[i].status === "done") continue;
 
-      updated[i] = { ...updated[i], status: "uploading", progress: "Verkleinere …" };
+      const file = updated[i].file;
+      const isVideo = isVideoFile(file);
+      updated[i] = { ...updated[i], status: "uploading", progress: isVideo ? "Prüfe Video …" : "Verkleinere …" };
       setFiles([...updated]);
 
       try {
-        const { web, thumb } = await makeWebAndThumb(updated[i].file);
-        updated[i] = { ...updated[i], progress: "Lade hoch …" };
-        setFiles([...updated]);
+        if (isVideo) {
+          await validateVideo(file); // throws a user-facing message if too big/long
+          const thumb = await makeVideoThumb(file);
+          updated[i] = { ...updated[i], progress: "Lädt Video hoch …" };
+          setFiles([...updated]);
 
-        const presign = await api.presignUpload(folderId, "image/jpeg");
-        await Promise.all([
-          putToS3(presign.webUploadUrl, web),
-          putToS3(presign.thumbUploadUrl, thumb),
-        ]);
+          const presign = await api.presignUpload(folderId, file.type, "video");
+          await Promise.all([
+            putToS3(presign.webUploadUrl, file, file.type),
+            putToS3(presign.thumbUploadUrl, thumb, "image/jpeg"),
+          ]);
+          await api.confirmUpload(folderId, presign.itemId, undefined, "video");
+        } else {
+          const { web, thumb } = await makeWebAndThumb(file);
+          updated[i] = { ...updated[i], progress: "Lade hoch …" };
+          setFiles([...updated]);
 
-        await api.confirmUpload(folderId, presign.itemId);
+          const presign = await api.presignUpload(folderId, "image/jpeg");
+          await Promise.all([
+            putToS3(presign.webUploadUrl, web),
+            putToS3(presign.thumbUploadUrl, thumb),
+          ]);
+          await api.confirmUpload(folderId, presign.itemId);
+        }
         updated[i] = { ...updated[i], status: "done", progress: "✓ Fertig" };
-      } catch {
-        updated[i] = { ...updated[i], status: "error", progress: "Fehler beim Upload" };
+      } catch (e: any) {
+        const msg = String(e?.message ?? "");
+        const friendly = msg.includes("video_too_large")
+          ? "Video ist zu groß (Server-Limit)."
+          : /zu groß|zu lang/.test(msg)
+            ? msg
+            : "Fehler beim Upload";
+        updated[i] = { ...updated[i], status: "error", progress: friendly };
       }
       setFiles([...updated]);
     }
@@ -65,20 +88,23 @@ export function UploadDialog({ folderId, onClose, onUploaded }: {
   return (
     <div className="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="upload-dialog-title">
       <div className="dialog-card">
-        <h2 id="upload-dialog-title">Fotos hochladen</h2>
-        <p className="muted">Fotos werden verkleinert und gehen zur Freigabe an die Lehrerin.</p>
+        <h2 id="upload-dialog-title">Fotos & Videos hochladen</h2>
+        <p className="muted">
+          Fotos werden verkleinert; Videos (max. 60&nbsp;s, 150&nbsp;MB) werden direkt geladen.
+          Alles geht zur Freigabe an die Lehrerin.
+        </p>
 
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,video/*"
           multiple
           onChange={pickFiles}
           style={{ display: "none" }}
           aria-hidden="true"
         />
         <button className="btn-secondary" onClick={() => inputRef.current?.click()} disabled={busy}>
-          Fotos auswählen
+          Fotos / Videos auswählen
         </button>
 
         {files.length > 0 && (

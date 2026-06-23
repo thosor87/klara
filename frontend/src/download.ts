@@ -58,7 +58,7 @@ export async function downloadImagesAsZip(
 }
 
 /** Build a friendly, filesystem-safe filename from a caption or the photo date. */
-export function buildFilename(caption: string | undefined, createdAt: string | undefined): string {
+export function buildFilename(caption: string | undefined, createdAt: string | undefined, ext = "jpg"): string {
   let base = (caption || "").trim();
   if (!base && createdAt) {
     const d = new Date(createdAt);
@@ -72,7 +72,7 @@ export function buildFilename(caption: string | undefined, createdAt: string | u
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60) || "foto";
-  return `klara-${base}.jpg`;
+  return `klara-${base}.${ext}`;
 }
 
 /**

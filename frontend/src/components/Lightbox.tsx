@@ -123,11 +123,12 @@ export function Lightbox({
   }, [index, items, total]);
 
   // --- Slideshow auto-advance ---
+  // Videos don't use the timer: they advance when they finish playing (onEnded).
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || item?.type === "video") return;
     const id = setTimeout(() => next(false), interval * 1000);
     return () => clearTimeout(id);
-  }, [playing, interval, index, next]);
+  }, [playing, interval, index, next, item?.type]);
 
   // --- Rotate a phone/tablet to landscape → show the current photo fullscreen ---
   // Best-effort: the Fullscreen API works on Android/iPadOS/desktop. iPhone Safari
@@ -181,7 +182,7 @@ export function Lightbox({
     if (downloading) return;
     setDownloading(true);
     try {
-      await downloadImage(item.webUrl, buildFilename(item.caption, item.createdAt));
+      await downloadImage(item.webUrl, buildFilename(item.caption, item.createdAt, item.type === "video" ? "mp4" : "jpg"));
     } finally {
       setDownloading(false);
     }
@@ -254,14 +255,27 @@ export function Lightbox({
 
       {/* Stage */}
       <div className="lightbox-stage" onClick={onClose}>
-        <img
-          key={fadeKey}
-          className="lightbox-img"
-          src={item.webUrl}
-          alt={alt}
-          onClick={(e) => e.stopPropagation()}
-          draggable={false}
-        />
+        {item.type === "video" ? (
+          <video
+            key={fadeKey}
+            className="lightbox-img lightbox-video"
+            src={item.webUrl}
+            controls
+            playsInline
+            preload="metadata"
+            onClick={(e) => e.stopPropagation()}
+            onEnded={() => { if (playing) next(false); }}
+          />
+        ) : (
+          <img
+            key={fadeKey}
+            className="lightbox-img"
+            src={item.webUrl}
+            alt={alt}
+            onClick={(e) => e.stopPropagation()}
+            draggable={false}
+          />
+        )}
       </div>
 
       {/* Prev / Next */}

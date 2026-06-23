@@ -34,16 +34,21 @@ export function Gallery({
               type="button"
               className="gallery-tile-btn"
               onClick={() => onOpen(i)}
-              aria-label={item.caption ? `Foto öffnen: ${item.caption}` : "Foto öffnen"}
+              aria-label={
+                item.type === "video"
+                  ? item.caption ? `Video öffnen: ${item.caption}` : "Video öffnen"
+                  : item.caption ? `Foto öffnen: ${item.caption}` : "Foto öffnen"
+              }
             >
               <img
                 className="gallery-img"
                 src={item.thumbUrl}
-                alt={item.caption || "Foto"}
+                alt={item.caption || (item.type === "video" ? "Video" : "Foto")}
                 loading="lazy"
                 decoding="async"
                 draggable={false}
               />
+              {item.type === "video" && <span className="video-badge" aria-hidden="true" />}
               {item.caption && (
                 <span className="gallery-caption" aria-hidden="true">{item.caption}</span>
               )}

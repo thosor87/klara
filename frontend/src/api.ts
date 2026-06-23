@@ -37,6 +37,7 @@ export interface ClassOption {
 
 export interface Item {
   id: string;
+  type?: "photo" | "video";
   caption: string;
   status: string;
   createdAt: string;
@@ -235,20 +236,20 @@ export const api = {
   },
 
   // Upload
-  async presignUpload(folderId: string, contentType: string): Promise<PresignResult> {
+  async presignUpload(folderId: string, contentType: string, kind: "photo" | "video" = "photo"): Promise<PresignResult> {
     const res = await fetch(`/api/folders/${folderId}/uploads/presign`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ contentType }),
+      body: JSON.stringify({ contentType, kind }),
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
-  async confirmUpload(folderId: string, itemId: string, caption?: string): Promise<Item> {
+  async confirmUpload(folderId: string, itemId: string, caption?: string, kind: "photo" | "video" = "photo"): Promise<Item> {
     const res = await fetch(`/api/folders/${folderId}/items`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ itemId, caption }),
+      body: JSON.stringify({ itemId, caption, kind }),
     });
     // 409 already_confirmed means the item exists — treat as success
     if (res.status === 409) return res.json();
