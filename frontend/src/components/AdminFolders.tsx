@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { api, type Folder, type ClassOption, type Item, type Me } from "../api";
 import { formatDateRange, toDateInput } from "../dates";
@@ -58,6 +58,7 @@ function FolderFormFields({
   const primary = selectable.filter(isPrimary);
   const others = selectable.filter((c) => !isPrimary(c));
   const [showAll, setShowAll] = useState(primary.length === 0);
+  const nameId = useId();
 
   const renderChip = (c: ClassOption) => {
     const active = form.classIds.includes(c.id);
@@ -80,22 +81,27 @@ function FolderFormFields({
   };
 
   return (
-    <>
-      <input
-        value={form.name}
-        onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-        placeholder="Name (z.B. Klassenfahrt 2025)"
-        required
-        autoFocus
-      />
-      <div className="album-form-grid">
-      <div className="form-field album-form-classes">
-        <span className="form-label">
-          Für welche Klassen?
-          <Link to="/verwaltung/klassen" className="form-label-link">Klassen verwalten</Link>
-        </span>
+    <div className="album-form">
+      <div className="album-field album-field--name">
+        <label className="album-label" htmlFor={nameId}>Albumname</label>
+        <input
+          id={nameId}
+          className="album-name-input"
+          value={form.name}
+          onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+          placeholder="Name (z.B. Klassenfahrt 2025)"
+          required
+          autoFocus
+        />
+      </div>
+
+      <div className="album-field">
+        <div className="album-label-row">
+          <span className="album-label">Für welche Klassen?</span>
+          <Link to="/verwaltung/klassen" className="album-label-link">Klassen verwalten</Link>
+        </div>
         {selectable.length === 0 ? (
-          <p className="muted" style={{ margin: ".2rem 0 0", fontSize: ".85rem" }}>
+          <p className="album-note">
             Noch keine aktiven Klassen. Lege sie unter „Klassen verwalten“ an.
           </p>
         ) : (
@@ -115,30 +121,37 @@ function FolderFormFields({
           </div>
         )}
         {form.classIds.length === 0 && selectable.length > 0 && (
-          <p className="muted class-toggle-hint">Ohne Klasse sehen nur Admins dieses Album.</p>
+          <p className="album-hint">
+            <span className="album-hint-dot" aria-hidden="true" />
+            Ohne Klasse sehen nur Admins dieses Album.
+          </p>
         )}
       </div>
-      <div className="form-row">
-        <label className="form-field">
-          <span className="form-label">Von</span>
-          <input
-            type="date"
-            value={form.startDate}
-            onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))}
-          />
-        </label>
-        <label className="form-field">
-          <span className="form-label">Bis (optional)</span>
-          <input
-            type="date"
-            value={form.endDate}
-            min={form.startDate || undefined}
-            onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))}
-          />
-        </label>
+
+      <div className="album-field">
+        <span className="album-label">Zeitraum <span className="album-label-opt">optional</span></span>
+        <div className="album-daterange">
+          <label className="album-date">
+            <span className="album-date-cap">Von</span>
+            <input
+              type="date"
+              value={form.startDate}
+              onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))}
+            />
+          </label>
+          <span className="album-date-sep" aria-hidden="true">–</span>
+          <label className="album-date">
+            <span className="album-date-cap">Bis</span>
+            <input
+              type="date"
+              value={form.endDate}
+              min={form.startDate || undefined}
+              onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))}
+            />
+          </label>
+        </div>
       </div>
-      </div>
-    </>
+    </div>
   );
 }
 
@@ -454,14 +467,17 @@ export function AdminFolders() {
       </div>
 
       {showCreate && (
-        <div className="card" style={{ maxWidth: "none", margin: "1rem 0" }}>
-          <h3 style={{ margin: "0 0 .75rem", color: "#5b3fb0" }}>Neues Album anlegen</h3>
-          <form onSubmit={handleCreate} className="admin-folder-edit-form">
+        <div className="album-create-card">
+          <div className="album-create-head">
+            <span className="album-create-kicker">Neu</span>
+            <h3 className="album-create-title">Neues Album anlegen</h3>
+          </div>
+          <form onSubmit={handleCreate} className="album-create-form">
             <FolderFormFields form={createForm} setForm={setCreateForm} classOptions={classOptions} ownClassId={me?.classId ?? undefined} />
             {createErr && <p className="err">{createErr}</p>}
-            <div style={{ display: "flex", gap: ".75rem", marginTop: "1rem" }}>
-              <button type="submit" style={{ width: "auto" }} disabled={createBusy || !createForm.name.trim()}>
-                {createBusy ? "Anlegen …" : "Anlegen"}
+            <div className="album-create-footer">
+              <button type="submit" className="album-submit" disabled={createBusy || !createForm.name.trim()}>
+                {createBusy ? "Anlegen …" : "Album anlegen"}
               </button>
             </div>
           </form>

@@ -582,8 +582,6 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
 .form-field { display: flex; flex-direction: column; gap: .25rem; margin: 0; }
 .form-label { font-size: .78rem; color: var(--ink-soft); font-weight: 600;
   display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
-.form-label-link { font-weight: 500; color: var(--purple); text-decoration: none; }
-.form-label-link:hover { text-decoration: underline; }
 .form-field select,
 .form-field input[type="date"],
 .form-field input[type="text"] {
@@ -606,10 +604,6 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
   box-shadow: 0 0 0 3px var(--purple-ring, rgba(91,63,176,.18));
 }
 .form-field input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .6; }
-.form-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
-.form-row .form-field { flex: 0 0 auto; }
-/* Compact date inputs: a date only needs ~170px, no need to stretch full width */
-.form-row .form-field input[type="date"] { width: auto; min-width: 170px; }
 
 /* ---- Folder card cover (public list) ---- */
 .folder-cover {
@@ -783,7 +777,7 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
 
 /* ---- Class assignment: toggle chips + display chips ---- */
 .class-toggle-row {
-  display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .4rem;
+  display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .1rem;
 }
 .class-toggle {
   width: auto; margin: 0; padding: .35rem .8rem; font-size: .85rem; font-weight: 600;
@@ -954,8 +948,149 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
   background: var(--purple-tint); color: var(--purple-deep); border-style: solid;
 }
 
-/* Compact album form: classes + dates side by side, wrapping on narrow screens */
-.album-form-grid { display: flex; gap: 1.25rem 2.5rem; flex-wrap: wrap; align-items: flex-start; }
-.album-form-grid .form-field { margin: 0; }
-.album-form-classes { flex: 1 1 260px; min-width: 240px; }
-.album-form-grid .form-row { flex: 0 0 auto; }
+/* ===========================================================================
+   Album-Formular — "Neues Album anlegen"
+   Ruhiger vertikaler Rhythmus statt gedrängtem Zwei-Spalten-Raster.
+   Geteilt zwischen Anlege-Karte und Inline-Bearbeiten-Zeile.
+   =========================================================================== */
+
+/* ---- Anlege-Karte: warme Papier-Karte mit Lila-Akzentkante ---- */
+.album-create-card {
+  position: relative;
+  margin: 1rem 0 .25rem;
+  background: var(--paper-card);
+  border: 1px solid var(--purple-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 1.6rem clamp(1.1rem, 4vw, 2rem) 1.5rem;
+  overflow: hidden;
+  animation: rise .4s var(--ease) both;
+}
+/* Akzent-Schiene links + zarter Lila-Schimmer oben rechts */
+.album-create-card::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+  background: linear-gradient(180deg, var(--purple) 0%, var(--purple-deep) 60%, var(--accent) 140%);
+}
+.album-create-card::after {
+  content: ""; position: absolute; top: -40%; right: -10%;
+  width: 220px; height: 220px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(91,63,176,.08), transparent 68%);
+}
+
+.album-create-head {
+  display: flex; align-items: center; gap: .65rem;
+  margin: 0 0 1.3rem; position: relative;
+}
+.album-create-kicker {
+  font-size: .68rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--purple-deep); background: var(--purple-tint);
+  border-radius: 999px; padding: .2rem .6rem; line-height: 1;
+}
+.album-create-title {
+  margin: 0; font-family: var(--font-display); font-weight: 600;
+  font-size: clamp(1.35rem, 3.5vw, 1.7rem); color: var(--ink); letter-spacing: -.01em;
+  font-variation-settings: "opsz" 60;
+}
+
+.album-create-form { margin: 0; }
+.album-create-footer {
+  display: flex; align-items: center; gap: .75rem;
+  margin-top: 1.6rem; padding-top: 1.3rem;
+  border-top: 1px solid var(--purple-line);
+}
+.album-submit {
+  width: auto; margin: 0; min-height: 48px; padding: .75rem 1.8rem;
+  font-weight: 600; letter-spacing: .01em; border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(67,45,138,.18);
+}
+.album-submit:hover:not(:disabled) { box-shadow: 0 8px 22px rgba(67,45,138,.26); }
+
+/* ---- Geteilte Felder: ein klarer vertikaler Stapel ---- */
+.album-form { display: flex; flex-direction: column; gap: 1.35rem; }
+.album-field { display: flex; flex-direction: column; gap: .55rem; }
+
+/* Einheitliches Label: kleines Kicker-Caps */
+.album-label {
+  font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-soft); line-height: 1;
+}
+.album-label-opt {
+  margin-left: .4rem; font-size: .68rem; font-weight: 600; letter-spacing: .04em;
+  text-transform: none; color: var(--purple); opacity: .8;
+}
+.album-label-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+}
+.album-label-link {
+  font-size: .8rem; font-weight: 600; color: var(--purple); text-decoration: none;
+  white-space: nowrap; transition: color .15s var(--ease);
+}
+.album-label-link::before { content: "↗ "; opacity: .7; font-weight: 700; }
+.album-label-link:hover { color: var(--purple-deep); text-decoration: underline; }
+
+/* Name = Held: groß, charaktervoll, Fraunces */
+.album-field--name { gap: .5rem; }
+.album-name-input {
+  width: 100%; margin: 0;
+  font-family: var(--font-display); font-weight: 500;
+  font-size: clamp(1.15rem, 3vw, 1.4rem); color: var(--ink);
+  padding: .85rem 1.05rem; min-height: 56px;
+  border: 1.5px solid var(--purple-line); border-radius: 14px;
+  background: var(--purple-tint);
+  transition: border-color .15s var(--ease), box-shadow .15s var(--ease), background .15s var(--ease);
+}
+.album-name-input::placeholder { color: #9b93b5; font-weight: 400; }
+.album-name-input:focus {
+  outline: none; background: #fff; border-color: var(--purple);
+  box-shadow: 0 0 0 4px rgba(91,63,176,.14);
+}
+
+/* Hinweis "Ohne Klasse …" als ruhiger getönter Callout */
+.album-note { margin: .1rem 0 0; font-size: .85rem; color: var(--ink-soft); }
+.album-hint {
+  display: flex; align-items: center; gap: .5rem; margin: .15rem 0 0;
+  font-size: .82rem; color: var(--purple-deep); font-weight: 500;
+  background: var(--purple-tint); border-radius: 10px; padding: .5rem .75rem;
+}
+.album-hint-dot {
+  flex-shrink: 0; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 0 3px rgba(242,165,65,.22);
+}
+
+/* Kompaktes "Von – Bis" Paar, linksbündig, nicht gestreckt */
+.album-daterange {
+  display: inline-flex; align-items: flex-end; gap: .65rem;
+  flex-wrap: wrap;
+}
+.album-date { display: flex; flex-direction: column; gap: .3rem; margin: 0; }
+.album-date-cap {
+  font-size: .7rem; font-weight: 600; letter-spacing: .03em; color: var(--ink-soft);
+}
+.album-date input[type="date"] {
+  width: auto; min-width: 158px; margin: 0;
+  font: inherit; color: var(--ink);
+  padding: .65rem .85rem; min-height: 46px;
+  border: 1px solid var(--purple-line); border-radius: 11px; background: #fff;
+  transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
+}
+.album-date input[type="date"]:focus {
+  outline: none; border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(91,63,176,.16);
+}
+.album-date input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .55; }
+.album-date-sep { align-self: center; color: var(--purple-line); font-size: 1.4rem; line-height: 46px; user-select: none; }
+
+/* ---- Inline-Bearbeiten-Zeile: kompakter, ohne Karten-Chrome ---- */
+.admin-folder-row--editing .album-form { gap: 1rem; }
+.admin-folder-row--editing .album-name-input {
+  background: #fff; font-size: 1.1rem; min-height: 50px; padding: .7rem .95rem;
+}
+
+/* ---- Schmale Screens: Datums-Paar wird voll und stapelt sauber ---- */
+@media (max-width: 480px) {
+  .album-daterange { display: flex; width: 100%; }
+  .album-date { flex: 1 1 130px; }
+  .album-date input[type="date"] { width: 100%; min-width: 0; }
+  .album-date-sep { display: none; }
+  .album-submit { width: 100%; }
+}
