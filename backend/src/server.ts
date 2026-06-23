@@ -23,6 +23,8 @@ import { createReportsService } from "./reports/service.js";
 import { registerReportRoutes } from "./reports/routes.js";
 import { registerTrashRoutes } from "./admin/trash-routes.js";
 import { registerCronRoutes } from "./cron/routes.js";
+import { createPostgresDomainsRepo, createPostgresClassOptionsRepo } from "./settings/repo.js";
+import { registerSettingsRoutes } from "./settings/routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -67,8 +69,15 @@ export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance
 export async function defaultRuntime(): Promise<BuildOptions> {
   const authRepo = createPostgresAuthRepo(sql);
   const mailer = config.mailTransport === "ses" ? createSesMailer() : createConsoleMailer();
+  const domainsRepo = createPostgresDomainsRepo(sql);
+  const classOptionsRepo = createPostgresClassOptionsRepo(sql);
+  // getAllowedDomains: fetches from DB at request time; falls back to config allowedDomains
+  // so existing env-var allowedDomains (allowlist) still works for active users.
+  // NOTE: config.allowedDomains is still used as the static override/allowlist in decideLoginAction
+  // but the primary domain list now comes from DB.
   const service = createAuthService({
-    repo: authRepo, mailer, allowedDomains: config.allowedDomains,
+    repo: authRepo, mailer,
+    getAllowedDomains: async () => domainsRepo.list(),
     tokenTtlMinutes: config.tokenTtlMinutes, appBaseUrl: config.appBaseUrl,
   });
 
@@ -98,6 +107,7 @@ export async function defaultRuntime(): Promise<BuildOptions> {
         itemsRepo, reportsRepo, storage, mailer, authRepo,
         cronSecret: config.cronSecret, trashRetentionDays: config.trashRetentionDays,
       });
+      registerSettingsRoutes(app, { domainsRepo, classOptionsRepo, requireUser, requireAdmin });
     },
   };
 }

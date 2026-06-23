@@ -7,7 +7,8 @@ import { generateCode, generateLinkToken, hashSecret, verifySecret } from "./tok
 export interface AuthServiceDeps {
   repo: AuthRepo;
   mailer: Mailer;
-  allowedDomains: string[];
+  /** Returns the current list of allowed domains (fetched at request time from DB or config). */
+  getAllowedDomains: () => Promise<string[]>;
   tokenTtlMinutes: number;
   appBaseUrl: string;
 }
@@ -19,7 +20,7 @@ export interface AuthService {
 }
 
 export function createAuthService(deps: AuthServiceDeps): AuthService {
-  const { repo, mailer, allowedDomains, tokenTtlMinutes, appBaseUrl } = deps;
+  const { repo, mailer, getAllowedDomains, tokenTtlMinutes, appBaseUrl } = deps;
 
   async function issueToken(email: string): Promise<void> {
     const code = generateCode();
@@ -48,7 +49,10 @@ export function createAuthService(deps: AuthServiceDeps): AuthService {
   return {
     async requestLogin(rawEmail) {
       const email = normalizeEmail(rawEmail);
-      const existing = await repo.findUserByEmail(email);
+      const [existing, allowedDomains] = await Promise.all([
+        repo.findUserByEmail(email),
+        getAllowedDomains(),
+      ]);
       const { action } = decideLoginAction({
         email, allowedDomains, existingUser: existing ? { status: existing.status } : null,
       });

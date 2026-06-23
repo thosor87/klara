@@ -66,8 +66,8 @@ class FakeMailer implements Mailer {
 }
 
 const DOMAINS = ["grundschule-xy.de"];
-function makeService(repo: AuthRepo, mailer: Mailer) {
-  return createAuthService({ repo, mailer, allowedDomains: DOMAINS,
+function makeService(repo: AuthRepo, mailer: Mailer, domains: string[] = DOMAINS) {
+  return createAuthService({ repo, mailer, getAllowedDomains: async () => domains,
     tokenTtlMinutes: 15, appBaseUrl: "https://klara.test" });
 }
 
@@ -156,5 +156,41 @@ describe("verifyLink", () => {
     const token = new URL(mailer.sent[0].link).searchParams.get("token")!;
     const user = await svc.verifyLink(token);
     expect(user?.id).toBe("u1");
+  });
+});
+
+describe("DB-driven domains (#6)", () => {
+  it("domain not in DB list AND not on allowlist → no mail, no user created", async () => {
+    const repo = new FakeRepo(); const mailer = new FakeMailer();
+    // DB has only grundschule-xy.de; login from other-school.de is denied
+    const svc = makeService(repo, mailer, ["grundschule-xy.de"]);
+    await svc.requestLogin("neu@other-school.de");
+    expect(repo.users).toHaveLength(0);
+    expect(mailer.sent).toHaveLength(0);
+  });
+
+  it("domain added to DB list → new user from that domain creates pending user", async () => {
+    const repo = new FakeRepo(); const mailer = new FakeMailer();
+    // Start with empty domain list (simulate freshly removed domain)
+    let domains: string[] = [];
+    const svc = createAuthService({
+      repo, mailer,
+      getAllowedDomains: async () => [...domains],
+      tokenTtlMinutes: 15, appBaseUrl: "https://klara.test",
+    });
+
+    // Before adding domain: denied
+    await svc.requestLogin("neu@new-school.de");
+    expect(repo.users).toHaveLength(0);
+    expect(mailer.sent).toHaveLength(0);
+
+    // Add domain to "DB" list
+    domains = ["new-school.de"];
+
+    // Now: user from new-school.de gets pending (create_pending action)
+    await svc.requestLogin("neu@new-school.de");
+    expect(repo.users).toHaveLength(1);
+    expect(repo.users[0].status).toBe("pending");
+    expect(mailer.sent).toHaveLength(0); // pending → no mail
   });
 });
