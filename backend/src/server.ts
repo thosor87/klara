@@ -25,6 +25,7 @@ import { registerTrashRoutes } from "./admin/trash-routes.js";
 import { registerCronRoutes } from "./cron/routes.js";
 import { createPostgresDomainsRepo, createPostgresClassOptionsRepo } from "./settings/repo.js";
 import { registerSettingsRoutes } from "./settings/routes.js";
+import { createPostgresGraduationRepo } from "./classes/repo.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -85,6 +86,7 @@ export async function defaultRuntime(): Promise<BuildOptions> {
   const itemsService = createItemsService({ itemsRepo, foldersRepo, storage });
   const reportsRepo = createPostgresReportsRepo(sql);
   const reportsService = createReportsService({ reportsRepo, itemsRepo, storage });
+  const graduationRepo = createPostgresGraduationRepo(sql);
   const { requireUser, requireAdmin } = makeGuards((id) => authRepo.findUserById(id));
 
   return {
@@ -103,6 +105,7 @@ export async function defaultRuntime(): Promise<BuildOptions> {
       });
       registerCronRoutes(app, {
         itemsRepo, reportsRepo, storage, mailer, authRepo,
+        classOptionsRepo, graduationRepo,
         cronSecret: config.cronSecret, trashRetentionDays: config.trashRetentionDays,
       });
       registerSettingsRoutes(app, { domainsRepo, classOptionsRepo, requireUser, requireAdmin });
