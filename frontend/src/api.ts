@@ -1,4 +1,4 @@
-export interface Me { id: string; email: string; role: "admin" | "member"; status: string; }
+export interface Me { id: string; email: string; role: "admin" | "member"; status: string; classId: string | null; }
 
 /** Klares Feedback auf einen Login-Request (kein generisches "Mail gesendet"). */
 export type RequestLoginOutcome = "code_sent" | "pending" | "denied";
@@ -15,6 +15,7 @@ export interface Folder {
   endDate?: string | null;
   coverItemId?: string | null;
   coverThumbUrl?: string | null;
+  classIds: string[];
 }
 
 export interface ClassOption {
@@ -45,6 +46,7 @@ export interface User {
   role: "admin" | "member";
   status: string;
   createdAt: string;
+  classId: string | null;
   uploadCount?: number;
 }
 
@@ -122,6 +124,7 @@ export const api = {
     startDate?: string | null;
     endDate?: string | null;
     coverItemId?: string | null;
+    classIds?: string[];
   }): Promise<Folder> {
     const res = await fetch("/api/admin/folders", {
       method: "POST",
@@ -139,6 +142,7 @@ export const api = {
     startDate?: string | null;
     endDate?: string | null;
     coverItemId?: string | null;
+    classIds?: string[];
   }): Promise<Folder> {
     const res = await fetch(`/api/admin/folders/${id}`, {
       method: "PATCH",
@@ -308,7 +312,7 @@ export const api = {
     const data = await jsonOrNull(await fetch("/api/admin/users"));
     return data ?? [];
   },
-  async createUser(body: { email: string; role?: "admin" | "member" }): Promise<User> {
+  async createUser(body: { email: string; role?: "admin" | "member"; classId?: string | null }): Promise<User> {
     const res = await fetch("/api/admin/users", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -317,7 +321,7 @@ export const api = {
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
-  async updateUser(id: string, body: { status?: string; role?: "admin" | "member" }): Promise<{ user?: User; error?: string }> {
+  async updateUser(id: string, body: { status?: string; role?: "admin" | "member"; classId?: string | null }): Promise<{ user?: User; error?: string }> {
     const res = await fetch(`/api/admin/users/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
