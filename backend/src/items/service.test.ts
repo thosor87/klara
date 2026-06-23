@@ -25,6 +25,9 @@ const FOLDER: Folder = {
 
 const DISABLED_FOLDER: Folder = { ...FOLDER, id: "f-dis", enabled: false };
 
+const MEMBER_USER = { isAdmin: false, classId: "class-a" };
+const ADMIN_USER = { isAdmin: true, classId: null };
+
 const ITEM: Item = {
   id: "item1",
   folderId: "f1",
@@ -102,7 +105,7 @@ describe("presignUpload", () => {
       storage: fakeStorage(),
     });
 
-    const result = await svc.presignUpload("f1", "image/jpeg");
+    const result = await svc.presignUpload("f1", "image/jpeg", MEMBER_USER);
 
     expect(result.itemId).toBeTypeOf("string");
     expect(result.webUploadUrl).toContain("https://s3.example.com/put/items/");
@@ -118,7 +121,7 @@ describe("presignUpload", () => {
       storage: fakeStorage(),
     });
 
-    await expect(svc.presignUpload("f-missing", "image/jpeg")).rejects.toMatchObject({
+    await expect(svc.presignUpload("f-missing", "image/jpeg", MEMBER_USER)).rejects.toMatchObject({
       name: "AppError",
       code: "folder_not_found",
     });
@@ -131,7 +134,7 @@ describe("presignUpload", () => {
       storage: fakeStorage(),
     });
 
-    await expect(svc.presignUpload("f-dis", "image/jpeg")).rejects.toMatchObject({
+    await expect(svc.presignUpload("f-dis", "image/jpeg", MEMBER_USER)).rejects.toMatchObject({
       name: "AppError",
       code: "folder_not_found",
     });
@@ -145,7 +148,7 @@ describe("presignUpload", () => {
       storage: fakeStorage(),
     });
 
-    await svc.presignUpload("f1", "image/jpeg");
+    await svc.presignUpload("f1", "image/jpeg", MEMBER_USER);
 
     expect(insertPending).not.toHaveBeenCalled();
   });
@@ -164,7 +167,7 @@ describe("confirmUpload", () => {
       storage: fakeStorage({ headExists }),
     });
 
-    await svc.confirmUpload("f1", "item1", "", "u1");
+    await svc.confirmUpload("f1", "item1", "", "u1", MEMBER_USER);
 
     expect(headExists).toHaveBeenCalledWith("items/item1/web.jpg");
     expect(headExists).toHaveBeenCalledWith("items/item1/thumb.jpg");
@@ -180,7 +183,7 @@ describe("confirmUpload", () => {
       }),
     });
 
-    await expect(svc.confirmUpload("f1", "item1", "", "u1")).rejects.toMatchObject({
+    await expect(svc.confirmUpload("f1", "item1", "", "u1", MEMBER_USER)).rejects.toMatchObject({
       name: "AppError",
       code: "upload_incomplete",
     });
@@ -195,7 +198,7 @@ describe("confirmUpload", () => {
       }),
     });
 
-    await expect(svc.confirmUpload("f1", "item1", "", "u1")).rejects.toMatchObject({
+    await expect(svc.confirmUpload("f1", "item1", "", "u1", MEMBER_USER)).rejects.toMatchObject({
       name: "AppError",
       code: "upload_incomplete",
     });
@@ -209,7 +212,7 @@ describe("confirmUpload", () => {
       storage: fakeStorage(),
     });
 
-    await svc.confirmUpload("f1", "item1", "a caption", "u1");
+    await svc.confirmUpload("f1", "item1", "a caption", "u1", MEMBER_USER);
 
     expect(insertPending).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -226,7 +229,7 @@ describe("confirmUpload", () => {
       storage: fakeStorage(),
     });
 
-    const result = await svc.confirmUpload("f1", "item1", "", "u1");
+    const result = await svc.confirmUpload("f1", "item1", "", "u1", MEMBER_USER);
     expect(result).toEqual(ITEM);
   });
 
@@ -236,7 +239,7 @@ describe("confirmUpload", () => {
       foldersRepo: fakeFoldersRepo({ findById: async () => DISABLED_FOLDER }),
       storage: fakeStorage({ headExists: async () => true }),
     });
-    await expect(svc.confirmUpload("f-dis", "item1", "", "u1")).rejects.toMatchObject({ code: "folder_not_found" });
+    await expect(svc.confirmUpload("f-dis", "item1", "", "u1", MEMBER_USER)).rejects.toMatchObject({ code: "folder_not_found" });
   });
 
   it("confirmUpload throws folder_not_found when folder not found", async () => {
@@ -245,7 +248,7 @@ describe("confirmUpload", () => {
       foldersRepo: fakeFoldersRepo({ findById: async () => null }),
       storage: fakeStorage({ headExists: async () => true }),
     });
-    await expect(svc.confirmUpload("missing", "item1", "", "u1")).rejects.toMatchObject({ code: "folder_not_found" });
+    await expect(svc.confirmUpload("missing", "item1", "", "u1", MEMBER_USER)).rejects.toMatchObject({ code: "folder_not_found" });
   });
 
   // Fix 2: duplicate confirm returns already_confirmed error
@@ -257,7 +260,7 @@ describe("confirmUpload", () => {
       storage: fakeStorage(),
     });
 
-    await expect(svc.confirmUpload("f1", "item1", "", "u1")).rejects.toMatchObject({
+    await expect(svc.confirmUpload("f1", "item1", "", "u1", MEMBER_USER)).rejects.toMatchObject({
       name: "AppError",
       code: "already_confirmed",
     });
@@ -519,5 +522,84 @@ describe("deleteOwnPending", () => {
     await expect(svc.deleteOwnPending("missing", "u1")).rejects.toMatchObject({ code: "not_allowed" });
     expect(deleteObjects).not.toHaveBeenCalled();
     expect(deleteById).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Class-based visibility gate (Plan 6)
+// ---------------------------------------------------------------------------
+
+describe("class visibility gate", () => {
+  it("member without visibility → listFolderItems throws folder_not_found", async () => {
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo(),
+      foldersRepo: fakeFoldersRepo({
+        findById: async () => FOLDER,
+        isVisibleToClass: async () => false,
+      }),
+      storage: fakeStorage(),
+    });
+
+    await expect(
+      svc.listFolderItems("f1", { isAdmin: false, userId: "u1", classId: "class-b" }),
+    ).rejects.toMatchObject({ code: "folder_not_found" });
+  });
+
+  it("member with visibility → listFolderItems succeeds", async () => {
+    const isVisibleToClass = vi.fn(async () => true);
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo({ listForMember: async () => [] }),
+      foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER, isVisibleToClass }),
+      storage: fakeStorage(),
+    });
+
+    await expect(
+      svc.listFolderItems("f1", { isAdmin: false, userId: "u1", classId: "class-a" }),
+    ).resolves.toEqual([]);
+    expect(isVisibleToClass).toHaveBeenCalledWith("f1", "class-a");
+  });
+
+  it("member without visibility → presignUpload throws folder_not_found", async () => {
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo(),
+      foldersRepo: fakeFoldersRepo({
+        findById: async () => FOLDER,
+        isVisibleToClass: async () => false,
+      }),
+      storage: fakeStorage(),
+    });
+
+    await expect(
+      svc.presignUpload("f1", "image/jpeg", { isAdmin: false, classId: "class-b" }),
+    ).rejects.toMatchObject({ code: "folder_not_found" });
+  });
+
+  it("member without visibility → confirmUpload throws folder_not_found", async () => {
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo(),
+      foldersRepo: fakeFoldersRepo({
+        findById: async () => FOLDER,
+        isVisibleToClass: async () => false,
+      }),
+      storage: fakeStorage(),
+    });
+
+    await expect(
+      svc.confirmUpload("f1", "item1", "", "u1", { isAdmin: false, classId: "class-b" }),
+    ).rejects.toMatchObject({ code: "folder_not_found" });
+  });
+
+  it("admin bypasses the gate (isVisibleToClass not consulted)", async () => {
+    const isVisibleToClass = vi.fn(async () => false);
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo(),
+      foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER, isVisibleToClass }),
+      storage: fakeStorage(),
+    });
+
+    await svc.presignUpload("f1", "image/jpeg", ADMIN_USER);
+    await svc.confirmUpload("f1", "item1", "", "u1", ADMIN_USER);
+
+    expect(isVisibleToClass).not.toHaveBeenCalled();
   });
 });

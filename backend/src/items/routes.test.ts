@@ -231,7 +231,11 @@ describe("GET /api/folders/:folderId/items", () => {
 
     await app.inject({ method: "GET", url: "/api/folders/f1/items" });
 
-    expect(listFolderItems).toHaveBeenCalledWith("f1", { isAdmin: true, userId: ADMIN.id });
+    expect(listFolderItems).toHaveBeenCalledWith("f1", {
+      isAdmin: true,
+      userId: ADMIN.id,
+      classId: ADMIN.classId,
+    });
   });
 
   // Fix 1: folder_not_found from service → 404 { error: 'folder_not_found' }

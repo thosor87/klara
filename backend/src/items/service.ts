@@ -16,15 +16,28 @@ export interface ItemsServiceDeps {
   storage: Storage;
 }
 
+/** Who is acting, for class-based visibility gating (Plan 6). */
+export interface ActingUser {
+  isAdmin: boolean;
+  classId: string | null;
+}
+
 export interface ItemsService {
   presignUpload(
     folderId: string,
     contentType: string,
+    user: ActingUser,
   ): Promise<{ itemId: string; webUploadUrl: string; thumbUploadUrl: string }>;
-  confirmUpload(folderId: string, itemId: string, caption: string, userId: string): Promise<Item>;
+  confirmUpload(
+    folderId: string,
+    itemId: string,
+    caption: string,
+    userId: string,
+    user: ActingUser,
+  ): Promise<Item>;
   listFolderItems(
     folderId: string,
-    opts: { isAdmin: boolean; userId?: string },
+    opts: { isAdmin: boolean; userId?: string; classId?: string | null },
   ): Promise<Array<Item & { thumbUrl: string; webUrl: string; mine: boolean }>>;
   listPending(): Promise<Array<ItemWithFolderName & { thumbUrl: string; webUrl: string }>>;
   approve(ids: string[], adminId: string): Promise<{ approved: number }>;
@@ -38,12 +51,23 @@ export interface ItemsService {
 export function createItemsService(deps: ItemsServiceDeps): ItemsService {
   const { itemsRepo, foldersRepo, storage } = deps;
 
+  // Non-admins must have class visibility on the folder; otherwise we 404 to
+  // avoid leaking the folder's existence. Admins bypass entirely.
+  async function assertVisible(folderId: string, user: ActingUser): Promise<void> {
+    if (user.isAdmin) return;
+    const visible = await foldersRepo.isVisibleToClass(folderId, user.classId);
+    if (!visible) {
+      throw new AppError("folder_not_found", "Folder not found or not visible");
+    }
+  }
+
   return {
-    async presignUpload(folderId, contentType) {
+    async presignUpload(folderId, contentType, user) {
       const folder = await foldersRepo.findById(folderId);
       if (!folder || !folder.enabled) {
         throw new AppError("folder_not_found", "Folder not found or not enabled");
       }
+      await assertVisible(folderId, user);
 
       const itemId = randomUUID();
       const webKey = `items/${itemId}/web.jpg`;
@@ -55,12 +79,13 @@ export function createItemsService(deps: ItemsServiceDeps): ItemsService {
       return { itemId, webUploadUrl, thumbUploadUrl };
     },
 
-    async confirmUpload(folderId, itemId, caption, userId) {
+    async confirmUpload(folderId, itemId, caption, userId, user) {
       // Verify folder exists and is enabled
       const folder = await foldersRepo.findById(folderId);
       if (!folder || !folder.enabled) {
         throw new AppError("folder_not_found", "Folder not found or not enabled");
       }
+      await assertVisible(folderId, user);
 
       const webKey = `items/${itemId}/web.jpg`;
       const thumbKey = `items/${itemId}/thumb.jpg`;
@@ -90,12 +115,13 @@ export function createItemsService(deps: ItemsServiceDeps): ItemsService {
       return item;
     },
 
-    async listFolderItems(folderId, { isAdmin, userId }) {
+    async listFolderItems(folderId, { isAdmin, userId, classId }) {
       if (!isAdmin) {
         const folder = await foldersRepo.findById(folderId);
         if (!folder || !folder.enabled) {
           throw new AppError("folder_not_found", "Folder not found or not enabled");
         }
+        await assertVisible(folderId, { isAdmin, classId: classId ?? null });
       }
 
       const items = isAdmin

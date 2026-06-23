@@ -23,7 +23,10 @@ export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): 
       }
 
       try {
-        const result = await itemsService.presignUpload(req.params.folderId, contentType);
+        const result = await itemsService.presignUpload(req.params.folderId, contentType, {
+          isAdmin: req.user!.role === "admin",
+          classId: req.user!.classId,
+        });
         return reply.code(200).send(result);
       } catch (err) {
         if (err instanceof AppError && err.code === "folder_not_found") {
@@ -51,6 +54,7 @@ export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): 
           itemId,
           caption ?? "",
           req.user!.id,
+          { isAdmin: req.user!.role === "admin", classId: req.user!.classId },
         );
         return reply.code(201).send(item);
       } catch (err) {
@@ -74,6 +78,7 @@ export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): 
         const items = await itemsService.listFolderItems(req.params.folderId, {
           isAdmin: req.user!.role === "admin",
           userId: req.user!.id,
+          classId: req.user!.classId,
         });
         return reply.send(items);
       } catch (err) {
