@@ -74,7 +74,6 @@ export function FolderList() {
                 <span className="folder-icon" aria-hidden="true">🌿</span>
               )}
               <div className="folder-name">{f.name}</div>
-              {f.schoolYear && <div className="folder-meta">{f.schoolYear}</div>}
               {f.classIds?.length > 0 && (
                 <div className="class-chips folder-class-chips">
                   {f.classIds.map((id) => (

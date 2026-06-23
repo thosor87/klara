@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams, useOutletContext, Link } from "react-router-dom";
-import { api, type Folder, type Item, type Me } from "../api";
+import { api, type Folder, type Item, type Me, type ClassOption } from "../api";
 import { UploadDialog } from "./UploadDialog";
 import { Gallery } from "./Gallery";
 import { Lightbox } from "./Lightbox";
@@ -22,6 +22,7 @@ export function FolderView() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [folder, setFolder] = useState<Folder | null>(null);
+  const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -49,6 +50,7 @@ export function FolderView() {
     api.getFolders()
       .then((fs) => setFolder(fs.find((f) => f.id === folderId) ?? null))
       .catch(() => setFolder(null));
+    api.getClassOptions().then(setClassOptions).catch(() => {});
   }, [folderId]);
 
   useEffect(() => { loadItems(); }, [folderId]);
@@ -113,9 +115,10 @@ export function FolderView() {
   }
 
   const title = folder?.name ?? "Album";
-  const meta = folder && (folder.schoolYear || folder.classLabel)
-    ? [folder.schoolYear, folder.classLabel].filter(Boolean).join(" · ")
-    : "";
+  // Album metadata is now the assigned classes (computed labels via class-options).
+  const classLabels = (folder?.classIds ?? [])
+    .map((id) => classOptions.find((c) => c.id === id)?.label)
+    .filter((l): l is string => Boolean(l));
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -150,7 +153,13 @@ export function FolderView() {
         </Link>
         <div className="folder-view-titlebox">
           <h1 className="folder-view-title">{title}</h1>
-          {meta && <p className="muted folder-view-meta">{meta}</p>}
+          {classLabels.length > 0 && (
+            <div className="class-chips folder-view-meta">
+              {classLabels.map((label, i) => (
+                <span key={`${label}-${i}`} className="class-chip">{label}</span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="folder-view-actions">
           <button className="btn-secondary btn-inline" onClick={() => setShowShare(true)}>Teilen</button>
