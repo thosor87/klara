@@ -56,6 +56,13 @@ class FakeRepo implements AuthRepo {
     if (data.classId !== undefined) u.classId = data.classId;
     return u;
   }
+  async assignClass(ids: string[], classId: string | null): Promise<User[]> {
+    const out: User[] = [];
+    for (const u of this.users) {
+      if (ids.includes(u.id)) { u.classId = classId; out.push(u); }
+    }
+    return out;
+  }
   async listAdminEmails(): Promise<string[]> {
     return this.users.filter((u) => u.role === "admin" && u.status === "active").map((u) => u.email);
   }

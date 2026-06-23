@@ -59,6 +59,7 @@ function fakeAuthRepo(over: Partial<AuthRepo> = {}): AuthRepo {
       createdAt: "x",
     }),
     updateUser: async () => null,
+    assignClass: async () => [],
     listAdminEmails: async () => [],
     ...over,
   };
@@ -340,5 +341,48 @@ describe("PATCH /api/admin/users/:id", () => {
     expect(res.statusCode).toBe(200);
     const body = res.json() as User;
     expect(body.role).toBe("admin");
+  });
+});
+
+describe("POST /api/admin/users/assign-class", () => {
+  it("admin bulk-assigns a class → 200 + assignClass called with ids + classId", async () => {
+    let captured: { ids?: string[]; classId?: string | null } | undefined;
+    const repo = fakeAuthRepo({
+      assignClass: async (ids, classId) => {
+        captured = { ids, classId };
+        return ids.map((id) => ({ ...MEMBER, id, classId }));
+      },
+    });
+    const app = await makeApp(repo, ADMIN);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/users/assign-class",
+      payload: { userIds: ["u-1", "u-2"], classId: "class-a" },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(captured).toEqual({ ids: ["u-1", "u-2"], classId: "class-a" });
+    expect((res.json() as User[]).map((u) => u.id)).toEqual(["u-1", "u-2"]);
+  });
+
+  it("empty userIds → 400", async () => {
+    const app = await makeApp(fakeAuthRepo(), ADMIN);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/users/assign-class",
+      payload: { userIds: [], classId: "class-a" },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("non-admin → 403", async () => {
+    const app = await makeApp(fakeAuthRepo(), MEMBER);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/users/assign-class",
+      payload: { userIds: ["u-1"], classId: "class-a" },
+    });
+    expect(res.statusCode).toBe(403);
   });
 });

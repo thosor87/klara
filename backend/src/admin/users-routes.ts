@@ -50,6 +50,20 @@ export function registerAdminUserRoutes(app: FastifyInstance, deps: AdminUserRou
     },
   );
 
+  // POST /api/admin/users/assign-class — bulk-assign a class to many users (admin only)
+  app.post<{ Body: { userIds?: string[]; classId?: string | null } }>(
+    "/api/admin/users/assign-class",
+    { preHandler: requireAdmin },
+    async (req, reply) => {
+      const { userIds, classId } = req.body ?? {};
+      if (!Array.isArray(userIds) || userIds.length === 0) {
+        return reply.code(400).send({ error: "userIds is required" });
+      }
+      const updated = await authRepo.assignClass(userIds, classId ?? null);
+      return reply.send(updated);
+    },
+  );
+
   // PATCH /api/admin/users/:id — update a user (admin only)
   app.patch<{
     Params: { id: string };

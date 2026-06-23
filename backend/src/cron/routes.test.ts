@@ -99,6 +99,7 @@ function fakeAuthRepo(overrides: Partial<AuthRepo> = {}): AuthRepo {
     listUsers: async () => [],
     upsertActiveUser: async (email, role) => ({ id: "u1", email, role, status: "active", classId: null, createdAt: "x" }),
     updateUser: async () => null,
+    assignClass: async () => [],
     listAdminEmails: async () => [],
     ...overrides,
   };

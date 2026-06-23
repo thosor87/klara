@@ -26,6 +26,8 @@ export interface AuthRepo {
     id: string,
     data: { status?: UserStatus; role?: UserRole; classId?: string | null },
   ): Promise<User | null>;
+  /** Bulk-assign (or clear) a class for many users at once. Returns the updated rows. */
+  assignClass(ids: string[], classId: string | null): Promise<User[]>;
   listAdminEmails(): Promise<string[]>;
 }
 
@@ -147,6 +149,15 @@ export function createPostgresAuthRepo(sql: SqlTag): AuthRepo {
       const rows = await sql<Record<string, unknown>[]>`
         update users set ${sql(updates)} where id = ${id} returning *`;
       return rows.length ? mapUser(rows[0]) : null;
+    },
+
+    async assignClass(ids, classId) {
+      if (ids.length === 0) return [];
+      const rows = await sql<Record<string, unknown>[]>`
+        update users set class_id = ${classId}
+        where id = any(${ids}::uuid[])
+        returning *`;
+      return rows.map(mapUser);
     },
 
     async listAdminEmails() {

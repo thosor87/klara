@@ -356,4 +356,17 @@ export const api = {
     const updated = (await res.json()) as User;
     return { user: updated };
   },
+
+  async assignClass(userIds: string[], classId: string | null): Promise<User[]> {
+    const res = await fetch(`/api/admin/users/assign-class`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ userIds, classId }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data?.error ?? `Fehler ${res.status}`);
+    }
+    return (await res.json()) as User[];
+  },
 };

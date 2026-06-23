@@ -9,16 +9,29 @@ function statusLabel(status: string): string {
   return status;
 }
 
+/** Classes a user may be newly assigned to (active/alumni/legacy), plus their current one. */
+function assignableClasses(classOptions: ClassOption[], currentId?: string | null): ClassOption[] {
+  return classOptions.filter(
+    (c) =>
+      c.status === "active" || c.status === "alumni" || c.status === "legacy" || c.id === currentId,
+  );
+}
+
 function UserRow({
   user,
   classOptions,
   onUpdated,
+  selected,
+  onToggleSelect,
 }: {
   user: User;
   classOptions: ClassOption[];
   onUpdated: (updated: User) => void;
+  selected: boolean;
+  onToggleSelect: (id: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [editingClass, setEditingClass] = useState(false);
   const [selfMsg, setSelfMsg] = useState(false);
   const [err, setErr] = useState("");
 
@@ -45,76 +58,91 @@ function UserRow({
   const isDisabled = user.status === "disabled";
   const isActive = user.status === "active";
   const count = user.uploadCount ?? 0;
+  const className = user.classId
+    ? classOptions.find((c) => c.id === user.classId)?.label ?? "Klasse"
+    : null;
 
   return (
-    <li className="admin-user-row">
-      <div className="admin-user-info">
-        <span className="admin-user-email">{user.email}</span>
-        <span
-          className={`admin-folder-status ${
-            isActive ? "status-active" : isPending ? "status-pending" : "status-disabled"
-          }`}
+    <li className="user-row">
+      <label className="user-row-check" title="Auswählen">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggleSelect(user.id)}
+          aria-label={`${user.email} auswählen`}
+        />
+      </label>
+
+      <span className="user-row-email">{user.email}</span>
+
+      <span
+        className={`status-pill ${
+          isActive ? "status-active" : isPending ? "status-pending" : "status-disabled"
+        }`}
+      >
+        {statusLabel(user.status)}
+      </span>
+      <span className={`role-pill role-pill--${user.role}`}>
+        {user.role === "admin" ? "Admin" : "Mitglied"}
+      </span>
+
+      {/* Class: shown as a compact chip; click to change inline (rare action). */}
+      {editingClass ? (
+        <select
+          className="user-class-inline"
+          value={user.classId ?? ""}
+          disabled={busy}
+          autoFocus
+          onBlur={() => setEditingClass(false)}
+          onChange={(e) => {
+            patch({ classId: e.target.value || null });
+            setEditingClass(false);
+          }}
         >
-          {statusLabel(user.status)}
-        </span>
-        <span className={`role-pill role-pill--${user.role}`}>
-          {user.role === "admin" ? "Admin" : "Mitglied"}
-        </span>
-        <label className="user-class-field">
-          <span className="user-class-label">Klasse</span>
-          <select
-            className="user-class-select"
-            value={user.classId ?? ""}
-            disabled={busy}
-            onChange={(e) => patch({ classId: e.target.value || null })}
-          >
-            <option value="">— keine —</option>
-            {classOptions
-              // Members may be newly assigned only to active/alumni/legacy classes;
-              // an already-assigned class stays selectable so it still shows.
-              .filter(
-                (c) =>
-                  c.status === "active" ||
-                  c.status === "alumni" ||
-                  c.status === "legacy" ||
-                  c.id === user.classId,
-              )
-              .map((c) => (
-                <option key={c.id} value={c.id}>{c.label}</option>
-              ))}
-          </select>
-        </label>
-        <span className="upload-count">{count} {count === 1 ? "Foto" : "Fotos"}</span>
-      </div>
-      <div className="admin-folder-actions">
+          <option value="">— keine Klasse —</option>
+          {assignableClasses(classOptions, user.classId).map((c) => (
+            <option key={c.id} value={c.id}>{c.label}</option>
+          ))}
+        </select>
+      ) : (
+        <button
+          type="button"
+          className={`user-class-chip${className ? "" : " user-class-chip--empty"}`}
+          onClick={() => setEditingClass(true)}
+          disabled={busy}
+          title="Klasse ändern"
+        >
+          {className ?? "+ Klasse"}
+        </button>
+      )}
+
+      <span className="user-row-uploads">{count} {count === 1 ? "Foto" : "Fotos"}</span>
+
+      <span className="user-row-actions">
         {isPending && (
-          <button className="btn-approve" style={{ width: "auto", margin: 0 }} onClick={() => patch({ status: "active" })} disabled={busy}>
+          <button className="btn-xs btn-xs--primary" onClick={() => patch({ status: "active" })} disabled={busy}>
             Freischalten
           </button>
         )}
         {isActive && (
-          <button className="btn-reject" style={{ width: "auto", margin: 0 }} onClick={() => patch({ status: "disabled" })} disabled={busy}>
+          <button className="btn-xs btn-xs--danger" onClick={() => patch({ status: "disabled" })} disabled={busy}>
             Deaktivieren
           </button>
         )}
         {isDisabled && (
-          <button className="btn-approve" style={{ width: "auto", margin: 0 }} onClick={() => patch({ status: "active" })} disabled={busy}>
-            Wieder aktivieren
+          <button className="btn-xs btn-xs--primary" onClick={() => patch({ status: "active" })} disabled={busy}>
+            Aktivieren
           </button>
         )}
-        {user.role === "member" && (
-          <button className="btn-secondary" style={{ width: "auto", margin: 0 }} onClick={() => patch({ role: "admin" })} disabled={busy}>
-            → Admin
-          </button>
+        {user.role === "member" ? (
+          <button className="btn-xs" onClick={() => patch({ role: "admin" })} disabled={busy}>→ Admin</button>
+        ) : (
+          <button className="btn-xs" onClick={() => patch({ role: "member" })} disabled={busy}>→ Mitglied</button>
         )}
-        {user.role === "admin" && (
-          <button className="btn-secondary" style={{ width: "auto", margin: 0 }} onClick={() => patch({ role: "member" })} disabled={busy}>
-            → Mitglied
-          </button>
-        )}
-      </div>
-      {selfMsg && <p className="err" style={{ margin: ".25rem 0 0" }}>Eigenen Account kann man nicht ändern.</p>}
-      {err && <p className="err" style={{ margin: ".25rem 0 0" }}>{err}</p>}
+      </span>
+
+      {selfMsg && <p className="err user-row-msg">Eigenen Account kann man nicht ändern.</p>}
+      {err && <p className="err user-row-msg">{err}</p>}
     </li>
   );
 }
@@ -136,6 +164,48 @@ function UserSection({
   emptyText: string;
   variant: "pending" | "admins" | "members";
 }) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkClass, setBulkClass] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkErr, setBulkErr] = useState("");
+
+  // Drop ids from the selection that are no longer in this section (e.g. role changed).
+  useEffect(() => {
+    setSelected((prev) => {
+      const present = new Set(users.map((u) => u.id));
+      const next = new Set([...prev].filter((id) => present.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [users]);
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  const allSelected = users.length > 0 && selected.size === users.length;
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(users.map((u) => u.id)));
+  }
+
+  async function doAssign() {
+    if (!selected.size || bulkBusy) return;
+    setBulkBusy(true);
+    setBulkErr("");
+    try {
+      const updated = await api.assignClass([...selected], bulkClass || null);
+      updated.forEach(onUpdated);
+      setSelected(new Set());
+    } catch (e: any) {
+      setBulkErr(e.message ?? "Zuweisung fehlgeschlagen.");
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   return (
     <section className={`user-section user-section--${variant}`}>
       <header className="user-section-head">
@@ -144,14 +214,53 @@ function UserSection({
         </h3>
         {hint && <p className="muted" style={{ margin: ".15rem 0 0" }}>{hint}</p>}
       </header>
+
+      {selected.size > 0 && (
+        <div className="user-bulk-bar">
+          <strong className="user-bulk-count">{selected.size} ausgewählt</strong>
+          <button type="button" className="user-bulk-link" onClick={() => setSelected(new Set())}>
+            Auswahl aufheben
+          </button>
+          <span className="user-bulk-spacer" />
+          <label className="user-bulk-assign">
+            <span>Klasse zuweisen:</span>
+            <select className="user-bulk-select" value={bulkClass} onChange={(e) => setBulkClass(e.target.value)} disabled={bulkBusy}>
+              <option value="">— keine —</option>
+              {assignableClasses(classOptions).map((c) => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </select>
+          </label>
+          <button type="button" className="btn-xs btn-xs--primary user-bulk-go" onClick={doAssign} disabled={bulkBusy}>
+            {bulkBusy ? "Weise zu …" : "Zuweisen"}
+          </button>
+        </div>
+      )}
+      {bulkErr && <p className="err" style={{ margin: ".25rem 0 .5rem" }}>{bulkErr}</p>}
+
       {users.length === 0 ? (
         <p className="muted user-section-empty">{emptyText}</p>
       ) : (
-        <ul className="admin-folder-list">
-          {users.map((u) => (
-            <UserRow key={u.id} user={u} classOptions={classOptions} onUpdated={onUpdated} />
-          ))}
-        </ul>
+        <>
+          <div className="user-list-head">
+            <label className="user-row-check" title="Alle auswählen">
+              <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Alle auswählen" />
+            </label>
+            <span className="user-list-head-label">Alle auswählen</span>
+          </div>
+          <ul className="user-list">
+            {users.map((u) => (
+              <UserRow
+                key={u.id}
+                user={u}
+                classOptions={classOptions}
+                onUpdated={onUpdated}
+                selected={selected.has(u.id)}
+                onToggleSelect={toggle}
+              />
+            ))}
+          </ul>
+        </>
       )}
     </section>
   );
@@ -276,11 +385,9 @@ export function AdminUsers() {
               }}
             >
               <option value="">Klasse: — keine —</option>
-              {classOptions
-                .filter((c) => c.status === "active" || c.status === "alumni" || c.status === "legacy")
-                .map((c) => (
-                  <option key={c.id} value={c.id}>Klasse: {c.label}</option>
-                ))}
+              {assignableClasses(classOptions).map((c) => (
+                <option key={c.id} value={c.id}>Klasse: {c.label}</option>
+              ))}
             </select>
             {addErr && <p className="err">{addErr}</p>}
             <div style={{ display: "flex", gap: ".75rem", marginTop: "1rem" }}>

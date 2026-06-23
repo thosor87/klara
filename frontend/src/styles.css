@@ -825,6 +825,83 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
   background: #fff; color: var(--ink);
 }
 
+/* ---- Compact user rows + multi-select bulk class assignment ---- */
+.user-list { list-style: none; margin: 0; padding: 0; }
+.user-list-head {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .2rem .6rem .5rem; border-bottom: 1px solid var(--purple-line);
+}
+.user-list-head-label {
+  font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-soft);
+}
+
+.user-row {
+  display: flex; align-items: center; flex-wrap: wrap; gap: .5rem .7rem;
+  padding: .6rem; border-radius: 10px;
+}
+.user-row + .user-row { border-top: 1px solid #f0ecf9; }
+.user-row:hover { background: #faf8ff; }
+
+.user-row-check { display: inline-flex; align-items: center; margin: 0; cursor: pointer; flex: 0 0 auto; }
+.user-row-check input { width: 17px; height: 17px; margin: 0; accent-color: var(--purple); cursor: pointer; }
+
+.user-row-email { font-weight: 600; font-size: .95rem; color: var(--ink); word-break: break-all; }
+
+.status-pill { border-radius: 6px; padding: .15rem .5rem; font-size: .8rem; font-weight: 600; }
+.status-pill.status-active { background: #e7f6ec; color: #1c7a43; }
+.status-pill.status-pending { background: #fef3c7; color: #92400e; }
+.status-pill.status-disabled { background: #f3e7e9; color: #9b2c3a; }
+
+.user-class-chip {
+  width: auto; margin: 0; padding: .2rem .65rem; font-size: .8rem; font-weight: 600; line-height: 1.3;
+  border-radius: 999px; cursor: pointer;
+  background: var(--purple-tint); color: var(--purple-deep); border: 1px solid var(--purple-line);
+}
+.user-class-chip:hover:not(:disabled) { background: #ece5fa; }
+.user-class-chip--empty { background: #fff; color: var(--ink-soft); border-style: dashed; }
+.user-class-inline {
+  font: inherit; font-size: .82rem; padding: .25rem .5rem; margin: 0; width: auto;
+  border-radius: 8px; border: 1.5px solid var(--purple); background: #fff; color: var(--ink);
+}
+
+.user-row-uploads {
+  margin-left: auto; flex: 0 0 auto; font-size: .8rem; font-weight: 600; color: var(--purple);
+  background: var(--purple-tint); border-radius: 999px; padding: .15rem .6rem;
+}
+
+.user-row-actions { display: inline-flex; gap: .4rem; flex: 0 0 auto; }
+.btn-xs {
+  width: auto; margin: 0; padding: .3rem .65rem; font-size: .78rem; font-weight: 600; line-height: 1.3;
+  border-radius: 8px; cursor: pointer;
+  background: transparent; color: var(--ink-soft); border: 1px solid var(--purple-line);
+}
+.btn-xs:hover:not(:disabled) { background: var(--purple-tint); color: var(--purple-deep); }
+.btn-xs--primary { background: var(--purple); color: #fff; border-color: var(--purple); }
+.btn-xs--primary:hover:not(:disabled) { background: var(--purple-deep); color: #fff; }
+.btn-xs--danger { color: #9b2c3a; }
+.btn-xs--danger:hover:not(:disabled) { background: #fdecee; color: #9b2c3a; border-color: #f0c2cb; }
+
+.user-row-msg { margin: .25rem 0 0; flex: 1 0 100%; }
+
+.user-bulk-bar {
+  display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
+  margin: 0 0 .8rem; padding: .6rem .9rem;
+  background: var(--purple-tint); border: 1px solid var(--purple-line); border-radius: 12px;
+}
+.user-bulk-count { color: var(--purple-deep); font-size: .9rem; }
+.user-bulk-link {
+  width: auto; margin: 0; padding: 0; background: none; border: none; cursor: pointer;
+  color: var(--purple); font-weight: 600; font-size: .82rem;
+}
+.user-bulk-link:hover { text-decoration: underline; }
+.user-bulk-spacer { flex: 1; }
+.user-bulk-assign { display: inline-flex; align-items: center; gap: .45rem; margin: 0; font-size: .82rem; color: var(--ink-soft); }
+.user-bulk-select {
+  font: inherit; font-size: .85rem; padding: .35rem .6rem; margin: 0; width: auto;
+  border-radius: 9px; border: 1.5px solid var(--purple-line); background: #fff; color: var(--ink);
+}
+.user-bulk-go { padding: .4rem .9rem; }
+
 /* ---- Settings: domains + classes management ---- */
 .settings-page { display: flex; flex-direction: column; gap: 1.5rem; }
 .settings-card {
