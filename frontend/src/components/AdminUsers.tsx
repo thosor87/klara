@@ -69,9 +69,19 @@ function UserRow({
             onChange={(e) => patch({ classId: e.target.value || null })}
           >
             <option value="">— keine —</option>
-            {classOptions.map((c) => (
-              <option key={c.id} value={c.id}>{c.label}</option>
-            ))}
+            {classOptions
+              // Members may be newly assigned only to active/alumni/legacy classes;
+              // an already-assigned class stays selectable so it still shows.
+              .filter(
+                (c) =>
+                  c.status === "active" ||
+                  c.status === "alumni" ||
+                  c.status === "legacy" ||
+                  c.id === user.classId,
+              )
+              .map((c) => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
           </select>
         </label>
         <span className="upload-count">{count} {count === 1 ? "Foto" : "Fotos"}</span>
@@ -266,9 +276,11 @@ export function AdminUsers() {
               }}
             >
               <option value="">Klasse: — keine —</option>
-              {classOptions.map((c) => (
-                <option key={c.id} value={c.id}>Klasse: {c.label}</option>
-              ))}
+              {classOptions
+                .filter((c) => c.status === "active" || c.status === "alumni" || c.status === "legacy")
+                .map((c) => (
+                  <option key={c.id} value={c.id}>Klasse: {c.label}</option>
+                ))}
             </select>
             {addErr && <p className="err">{addErr}</p>}
             <div style={{ display: "flex", gap: ".75rem", marginTop: "1rem" }}>
