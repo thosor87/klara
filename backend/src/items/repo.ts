@@ -46,6 +46,8 @@ export interface ItemsRepo {
   restore(id: string): Promise<boolean>;
   countPending(): Promise<number>;
   purgeTrashed(before: Date): Promise<TrashedS3Keys[]>;
+  /** Trash any item by id (regardless of current status). Used when a report is deleted. */
+  trashItemById(id: string): Promise<boolean>;
 }
 
 function mapItem(r: Record<string, unknown>): Item {
@@ -158,6 +160,15 @@ export function createPostgresItemsRepo(sql: SqlTag): ItemsRepo {
         WHERE status = 'trashed' AND trashed_at < ${before}
         RETURNING s3_key, thumb_key`;
       return rows.map((r) => ({ s3Key: r.s3_key, thumbKey: r.thumb_key }));
+    },
+
+    async trashItemById(id) {
+      const rows = await sql<{ id: string }[]>`
+        UPDATE items
+        SET status = 'trashed', trashed_at = now()
+        WHERE id = ${id}
+        RETURNING id`;
+      return rows.length > 0;
     },
   };
 }

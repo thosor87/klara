@@ -72,6 +72,7 @@ function fakeItemsRepo(overrides: Partial<ItemsRepo> = {}): ItemsRepo {
     restore: async () => true,
     countPending: async () => 0,
     purgeTrashed: async () => [],
+    trashItemById: async () => true,
     ...overrides,
   };
 }
