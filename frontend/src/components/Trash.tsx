@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { api, type TrashItem } from "../api";
+import { useConfirm } from "./ConfirmDialog";
 
 type OutletCtx = { refreshPending: () => void };
 
@@ -11,6 +12,7 @@ export function Trash() {
   const [error, setError] = useState(false);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const { ask, dialog: confirmDialog } = useConfirm();
 
   function load() {
     setLoading(true);
@@ -34,6 +36,26 @@ export function Trash() {
       load();
     } catch {
       setMsg("Wiederherstellen fehlgeschlagen. Bitte erneut versuchen.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handlePurge(itemId: string) {
+    const ok = await ask({
+      title: "Endgültig löschen",
+      message: "Dieses Foto wird unwiderruflich gelöscht — inklusive der Bilddatei. Das kann nicht rückgängig gemacht werden.",
+      confirmLabel: "Endgültig löschen",
+      danger: true,
+    });
+    if (!ok) return;
+    setBusy(itemId); setMsg("");
+    try {
+      await api.purgeTrashItem(itemId);
+      setMsg("Foto wurde endgültig gelöscht.");
+      setItems((prev) => prev.filter((it) => it.id !== itemId));
+    } catch {
+      setMsg("Löschen fehlgeschlagen. Bitte erneut versuchen.");
     } finally {
       setBusy(null);
     }
@@ -84,18 +106,29 @@ export function Trash() {
               {item.caption && (
                 <div className="approval-caption">{item.caption}</div>
               )}
-              <button
-                className="btn-approve btn-inline"
-                style={{ marginTop: ".6rem", fontSize: ".85rem", padding: ".4rem .85rem" }}
-                disabled={busy === item.id}
-                onClick={() => handleRestore(item.id)}
-              >
-                {busy === item.id ? "…" : "Wiederherstellen"}
-              </button>
+              <div className="trash-actions">
+                <button
+                  className="btn-approve btn-inline"
+                  style={{ marginTop: ".6rem", fontSize: ".85rem", padding: ".4rem .85rem" }}
+                  disabled={busy === item.id}
+                  onClick={() => handleRestore(item.id)}
+                >
+                  {busy === item.id ? "…" : "Wiederherstellen"}
+                </button>
+                <button
+                  className="btn-danger-ghost btn-inline"
+                  style={{ marginTop: ".6rem", fontSize: ".85rem", padding: ".4rem .85rem" }}
+                  disabled={busy === item.id}
+                  onClick={() => handlePurge(item.id)}
+                >
+                  Endgültig löschen
+                </button>
+              </div>
             </div>
           </div>
         ))}
       </div>
+      {confirmDialog}
     </div>
   );
 }

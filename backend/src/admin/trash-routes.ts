@@ -54,4 +54,22 @@ export function registerTrashRoutes(app: FastifyInstance, deps: TrashRoutesDeps)
       return reply.send({ ok: true });
     },
   );
+
+  // DELETE /api/admin/trash/:itemId — permanently delete a trashed item (row + files)
+  app.delete<{ Params: { itemId: string } }>(
+    "/api/admin/trash/:itemId",
+    { preHandler: requireAdmin },
+    async (req, reply) => {
+      // Only items that are actually in the trash may be hard-deleted here.
+      const item = await itemsRepo.findById(req.params.itemId);
+      if (!item || item.status !== "trashed") {
+        return reply.code(404).send({ error: "item_not_found" });
+      }
+      const keys = await itemsRepo.deleteById(item.id);
+      if (keys) {
+        await storage.deleteObjects([keys.s3Key, keys.thumbKey]);
+      }
+      return reply.send({ ok: true });
+    },
+  );
 }

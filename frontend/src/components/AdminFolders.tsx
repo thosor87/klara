@@ -3,6 +3,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { api, type Folder, type ClassOption, type Item, type Me } from "../api";
 import { formatDateRange, toDateInput } from "../dates";
 import { Trash } from "./Trash";
+import { useConfirm } from "./ConfirmDialog";
 
 type OutletCtx = { me?: Me };
 
@@ -172,6 +173,7 @@ function FolderRow({
   onUpdated,
   onMove,
   onPickCover,
+  onDeleted,
 }: {
   folder: Folder;
   classOptions: ClassOption[];
@@ -180,6 +182,7 @@ function FolderRow({
   onUpdated: (updated: Folder) => void;
   onMove: (id: string, direction: "up" | "down") => void;
   onPickCover: (folder: Folder) => void;
+  onDeleted: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<FormState>({
@@ -190,6 +193,7 @@ function FolderRow({
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const { ask, dialog: confirmDialog } = useConfirm();
 
   async function saveEdit(e: React.FormEvent) {
     e.preventDefault();
@@ -222,6 +226,27 @@ function FolderRow({
     } catch (e: any) {
       setErr(e.message ?? "Fehler beim Umschalten.");
     } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (busy) return;
+    const ok = await ask({
+      title: "Album löschen",
+      message:
+        "Das Album wird gelöscht. Alle Fotos darin wandern in den Papierkorb und werden dort nach 30 Tagen endgültig entfernt.",
+      confirmLabel: "Album löschen",
+      danger: true,
+    });
+    if (!ok) return;
+    setBusy(true);
+    setErr("");
+    try {
+      await api.deleteFolder(folder.id);
+      onDeleted(folder.id);
+    } catch (e: any) {
+      setErr(e.message ?? "Löschen fehlgeschlagen.");
       setBusy(false);
     }
   }
@@ -292,8 +317,20 @@ function FolderRow({
         >
           {folder.enabled ? "Deaktivieren" : "Aktivieren"}
         </button>
+        {!folder.enabled && (
+          <button
+            className="btn-danger-ghost"
+            style={{ width: "auto", margin: 0 }}
+            onClick={handleDelete}
+            disabled={busy}
+            title="Album löschen — Fotos wandern in den Papierkorb"
+          >
+            Löschen
+          </button>
+        )}
       </div>
       {err && <p className="err">{err}</p>}
+      {confirmDialog}
     </li>
   );
 }
@@ -506,6 +543,7 @@ export function AdminFolders() {
             onUpdated={handleUpdated}
             onMove={handleMove}
             onPickCover={setCoverFor}
+            onDeleted={(id) => setFolders((prev) => prev.filter((f) => f.id !== id))}
           />
         ))}
       </ul>

@@ -160,4 +160,30 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
       return reply.send({ moved });
     },
   );
+
+  // DELETE /api/admin/folders/:id — delete a (disabled) album: its photos move to
+  // the trash, then the album is hidden. Only allowed once the album is disabled.
+  app.delete<{ Params: { id: string } }>(
+    "/api/admin/folders/:id",
+    { preHandler: requireAdmin },
+    async (req, reply) => {
+      const { id } = req.params;
+      const folder = await foldersRepo.findById(id);
+      if (!folder) {
+        return reply.code(404).send({ error: "not found" });
+      }
+      if (folder.enabled) {
+        return reply.code(400).send({ error: "must_disable_first" });
+      }
+      // Move every still-live photo to the trash (recoverable for the retention
+      // window), then soft-delete the album so it disappears from all lists.
+      const items = await itemsRepo.listByFolder(id, ["pending", "approved"]);
+      const ids = items.map((i) => i.id);
+      if (ids.length > 0) {
+        await itemsRepo.setStatusTrashed(ids);
+      }
+      await foldersRepo.softDelete(id);
+      return reply.code(204).send();
+    },
+  );
 }

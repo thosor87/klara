@@ -168,6 +168,15 @@ export const api = {
     return res.json();
   },
 
+  // Delete a disabled album: its photos move to the trash, the album is hidden.
+  async deleteFolder(id: string): Promise<void> {
+    const res = await fetch(`/api/admin/folders/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data?.error ?? `Fehler ${res.status}`);
+    }
+  },
+
   // Class options (member dropdown)
   async getClassOptions(): Promise<ClassOption[]> {
     const data = await jsonOrNull(await fetch("/api/class-options"));
@@ -323,6 +332,11 @@ export const api = {
   },
   async restoreTrashItem(itemId: string): Promise<{ ok: boolean }> {
     const res = await fetch(`/api/admin/trash/${itemId}/restore`, { method: "POST" });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+  async purgeTrashItem(itemId: string): Promise<{ ok: boolean }> {
+    const res = await fetch(`/api/admin/trash/${itemId}`, { method: "DELETE" });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },

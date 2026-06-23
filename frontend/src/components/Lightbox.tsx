@@ -129,6 +129,29 @@ export function Lightbox({
     return () => clearTimeout(id);
   }, [playing, interval, index, next]);
 
+  // --- Rotate a phone/tablet to landscape → show the current photo fullscreen ---
+  // Best-effort: the Fullscreen API works on Android/iPadOS/desktop. iPhone Safari
+  // doesn't allow element fullscreen, so there the CSS landscape rules (styles.css)
+  // make the image fill the screen instead. Failures are swallowed.
+  useEffect(() => {
+    if (!window.matchMedia?.("(pointer: coarse)").matches) return;
+    const mql = window.matchMedia("(orientation: landscape)");
+    const doc = document as Document & { webkitExitFullscreen?: () => void; webkitFullscreenElement?: Element };
+    function enterFs() {
+      const node = overlayRef.current as (HTMLElement & { webkitRequestFullscreen?: () => void }) | null;
+      if (!node || doc.fullscreenElement || doc.webkitFullscreenElement) return;
+      try { (node.requestFullscreen?.() as Promise<void> | undefined)?.catch(() => {}) ?? node.webkitRequestFullscreen?.(); } catch { /* unsupported */ }
+    }
+    function exitFs() {
+      if (!doc.fullscreenElement && !doc.webkitFullscreenElement) return;
+      try { (doc.exitFullscreen?.() as Promise<void> | undefined)?.catch(() => {}) ?? doc.webkitExitFullscreen?.(); } catch { /* ignore */ }
+    }
+    function apply() { if (mql.matches) enterFs(); else exitFs(); }
+    apply();
+    mql.addEventListener?.("change", apply);
+    return () => { mql.removeEventListener?.("change", apply); exitFs(); };
+  }, []);
+
   // --- Touch swipe ---
   function onTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];

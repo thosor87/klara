@@ -100,6 +100,7 @@ function fakeFoldersRepo(over: Partial<FoldersRepo> = {}): FoldersRepo {
     findById: async () => null,
     itemCounts: async () => new Map(),
     move: async () => false,
+    softDelete: async () => true,
     ...over,
   };
 }
@@ -581,6 +582,59 @@ describe("POST /api/admin/folders/:id/move", () => {
       url: "/api/admin/folders/f-enabled/move",
       payload: { direction: "up" },
     });
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/admin/folders/:id
+// ---------------------------------------------------------------------------
+
+describe("DELETE /api/admin/folders/:id", () => {
+  it("disabled album → 204, trashes its photos and soft-deletes the album", async () => {
+    let trashed: string[] | undefined;
+    let softDeleted: string | undefined;
+    const foldersRepo = fakeFoldersRepo({
+      findById: async () => FOLDER_DISABLED,
+      softDelete: async (id) => { softDeleted = id; return true; },
+    });
+    const itemsRepo = fakeItemsRepo({
+      listByFolder: async () => [APPROVED_ITEM],
+      setStatusTrashed: async (ids) => { trashed = ids; return ids.length; },
+    });
+    const app = await makeApp(foldersRepo, ADMIN, itemsRepo);
+
+    const res = await app.inject({ method: "DELETE", url: "/api/admin/folders/f-disabled" });
+
+    expect(res.statusCode).toBe(204);
+    expect(trashed).toEqual([APPROVED_ITEM.id]);
+    expect(softDeleted).toBe("f-disabled");
+  });
+
+  it("enabled album → 400 must_disable_first (no trashing)", async () => {
+    let softCalled = false;
+    const foldersRepo = fakeFoldersRepo({
+      findById: async () => FOLDER_ENABLED,
+      softDelete: async () => { softCalled = true; return true; },
+    });
+    const app = await makeApp(foldersRepo, ADMIN);
+
+    const res = await app.inject({ method: "DELETE", url: "/api/admin/folders/f-enabled" });
+
+    expect(res.statusCode).toBe(400);
+    expect(softCalled).toBe(false);
+  });
+
+  it("unknown album → 404", async () => {
+    const foldersRepo = fakeFoldersRepo({ findById: async () => null });
+    const app = await makeApp(foldersRepo, ADMIN);
+    const res = await app.inject({ method: "DELETE", url: "/api/admin/folders/nope" });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("non-admin → 403", async () => {
+    const app = await makeApp(fakeFoldersRepo(), MEMBER);
+    const res = await app.inject({ method: "DELETE", url: "/api/admin/folders/f-disabled" });
     expect(res.statusCode).toBe(403);
   });
 });

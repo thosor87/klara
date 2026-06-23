@@ -66,10 +66,20 @@ input, button {
 }
 button { background: var(--purple); color: #fff; border: none; cursor: pointer;
          transition: background .15s var(--ease), transform .1s var(--ease); }
-button:hover:not(:disabled) { background: var(--purple-deep); }
+/* Low specificity (0,1,1) on purpose: component buttons with their own `.x:hover`
+   (e.g. .lb-pill, .sort-toggle) must win, otherwise they'd get a purple-deep
+   background while keeping purple text → unreadable. */
+button:hover { background: var(--purple-deep); }
 button:active:not(:disabled) { transform: translateY(1px); }
 button:disabled { opacity: .5; cursor: default; }
 .btn-inline { width: auto; margin: 0; }
+/* Ghost button for destructive-but-secondary actions (delete album / purge photo) */
+.btn-danger-ghost {
+  width: auto; background: transparent; color: var(--danger);
+  border: 1px solid var(--purple-line); border-radius: 999px; padding: .5rem 1rem; cursor: pointer;
+}
+.btn-danger-ghost:hover:not(:disabled) { background: #fdecee; border-color: #f0c2cb; color: var(--danger); }
+.trash-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 .link-btn { background: transparent; color: var(--purple); width: auto; margin-top: .8rem; padding: .4rem .2rem; }
 .link-btn:hover { background: transparent; text-decoration: underline; }
 .err { color: var(--danger); margin-top: .6rem; }
@@ -361,6 +371,20 @@ button:disabled { opacity: .5; cursor: default; }
 .lightbox.is-playing .lb-nav { opacity: .25; transition: opacity .4s var(--ease); }
 .lightbox.is-playing .lightbox-top:hover,
 .lightbox.is-playing .lb-nav:hover { opacity: 1; }
+
+/* True fullscreen (Android/iPadOS/desktop) or a phone/tablet held in landscape:
+   let the current photo fill the screen edge-to-edge. */
+.lightbox:fullscreen { background: #000; }
+.lightbox:fullscreen .lightbox-stage,
+.lightbox:-webkit-full-screen .lightbox-stage { padding: 0; }
+.lightbox:fullscreen .lightbox-img,
+.lightbox:-webkit-full-screen .lightbox-img { max-height: 100%; max-width: 100%; border-radius: 0; }
+@media (orientation: landscape) and (pointer: coarse) {
+  .lightbox-stage { padding: .2rem; }
+  .lightbox-img { max-height: 100%; border-radius: 0; }
+  .lightbox-top { padding-top: calc(.3rem + var(--safe-t)); }
+  .lightbox-bottom { padding-top: .3rem; padding-bottom: calc(.3rem + var(--safe-b)); }
+}
 
 /* ===========================================================================
    SHARE DIALOG

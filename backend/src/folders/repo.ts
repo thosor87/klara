@@ -60,6 +60,8 @@ export interface FoldersRepo {
    * Returns true if swap happened, false if already at boundary (no-op).
    */
   move(id: string, direction: "up" | "down"): Promise<boolean>;
+  /** Soft-delete: hide the album everywhere (rows stay so trashed items keep a name). */
+  softDelete(id: string): Promise<boolean>;
 }
 
 /** A DATE column comes back from postgres as a JS Date (UTC midnight); the API
@@ -124,13 +126,13 @@ export function createPostgresFoldersRepo(sql: SqlTag): FoldersRepo {
   const repo: FoldersRepo = {
     async listAll() {
       const rows = await sql<Record<string, unknown>[]>`
-        SELECT * FROM folders ORDER BY sort_order, created_at`;
+        SELECT * FROM folders WHERE deleted_at IS NULL ORDER BY sort_order, created_at`;
       return attachClasses(rows);
     },
 
     async listEnabled() {
       const rows = await sql<Record<string, unknown>[]>`
-        SELECT * FROM folders WHERE enabled = true ORDER BY sort_order, created_at`;
+        SELECT * FROM folders WHERE enabled = true AND deleted_at IS NULL ORDER BY sort_order, created_at`;
       return attachClasses(rows);
     },
 
@@ -141,7 +143,7 @@ export function createPostgresFoldersRepo(sql: SqlTag): FoldersRepo {
       const rows = await sql<Record<string, unknown>[]>`
         SELECT f.* FROM folders f
         JOIN folder_classes fc ON fc.folder_id = f.id
-        WHERE f.enabled = true AND fc.class_id = ${classId}
+        WHERE f.enabled = true AND f.deleted_at IS NULL AND fc.class_id = ${classId}
         ORDER BY f.sort_order, f.created_at`;
       return attachClasses(rows);
     },
@@ -247,7 +249,7 @@ export function createPostgresFoldersRepo(sql: SqlTag): FoldersRepo {
       // pairwise sort_order swap) is robust even when folders share a sort_order
       // (e.g. all default 0), and uses single-id UPDATEs (correct uuid binding).
       const all = await sql<{ id: string }[]>`
-        SELECT id FROM folders ORDER BY sort_order, created_at`;
+        SELECT id FROM folders WHERE deleted_at IS NULL ORDER BY sort_order, created_at`;
 
       const idx = all.findIndex((f) => f.id === id);
       if (idx === -1) return false;
@@ -265,6 +267,14 @@ export function createPostgresFoldersRepo(sql: SqlTag): FoldersRepo {
       });
 
       return true;
+    },
+
+    async softDelete(id) {
+      const rows = await sql<{ id: string }[]>`
+        UPDATE folders SET deleted_at = now()
+        WHERE id = ${id} AND deleted_at IS NULL
+        RETURNING id`;
+      return rows.length > 0;
     },
   };
 

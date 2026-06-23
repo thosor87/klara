@@ -78,7 +78,7 @@ function fakeStorage(overrides: Partial<Storage> = {}): Storage {
   };
 }
 
-async function makeApp(repo: ItemsRepo, user: User | null) {
+async function makeApp(repo: ItemsRepo, user: User | null, storage: Storage = fakeStorage()) {
   const app = Fastify();
   await app.register(fastifyCookie, { secret: "test-secret" });
 
@@ -90,7 +90,7 @@ async function makeApp(repo: ItemsRepo, user: User | null) {
 
   registerTrashRoutes(app, {
     itemsRepo: repo,
-    storage: fakeStorage(),
+    storage,
     trashRetentionDays: 30,
     requireAdmin,
   });
@@ -179,6 +179,49 @@ describe("POST /api/admin/trash/:itemId/restore", () => {
       url: "/api/admin/trash/item1/restore",
     });
 
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/admin/trash/:itemId  (permanent delete)
+// ---------------------------------------------------------------------------
+
+describe("DELETE /api/admin/trash/:itemId", () => {
+  it("trashed item → 200, deletes row + S3 objects", async () => {
+    let deletedId: string | undefined;
+    let deletedKeys: string[] | undefined;
+    const repo = fakeItemsRepo({
+      findById: async () => TRASHED_ITEM,
+      deleteById: async (id) => { deletedId = id; return { s3Key: TRASHED_ITEM.s3Key, thumbKey: TRASHED_ITEM.thumbKey }; },
+    });
+    const storage = fakeStorage({ deleteObjects: async (keys) => { deletedKeys = keys; } });
+    const app = await makeApp(repo, ADMIN, storage);
+
+    const res = await app.inject({ method: "DELETE", url: "/api/admin/trash/item1" });
+
+    expect(res.statusCode).toBe(200);
+    expect(deletedId).toBe("item1");
+    expect(deletedKeys).toEqual([TRASHED_ITEM.s3Key, TRASHED_ITEM.thumbKey]);
+  });
+
+  it("item not in trash → 404 (no delete)", async () => {
+    let deleteCalled = false;
+    const repo = fakeItemsRepo({
+      findById: async () => ({ ...TRASHED_ITEM, status: "approved" }),
+      deleteById: async () => { deleteCalled = true; return null; },
+    });
+    const app = await makeApp(repo, ADMIN);
+
+    const res = await app.inject({ method: "DELETE", url: "/api/admin/trash/item1" });
+
+    expect(res.statusCode).toBe(404);
+    expect(deleteCalled).toBe(false);
+  });
+
+  it("non-admin → 403", async () => {
+    const app = await makeApp(fakeItemsRepo(), MEMBER);
+    const res = await app.inject({ method: "DELETE", url: "/api/admin/trash/item1" });
     expect(res.statusCode).toBe(403);
   });
 });

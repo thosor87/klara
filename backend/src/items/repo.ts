@@ -177,12 +177,16 @@ export function createPostgresItemsRepo(sql: SqlTag): ItemsRepo {
     },
 
     async restore(id) {
-      const rows = await sql<{ id: string }[]>`
+      const rows = await sql<{ folder_id: string }[]>`
         UPDATE items
         SET status = 'pending', trashed_at = null
         WHERE id = ${id} AND status = 'trashed'
-        RETURNING id`;
-      return rows.length > 0;
+        RETURNING folder_id`;
+      if (rows.length === 0) return false;
+      // If the item's album was soft-deleted, bring it back (still disabled) so
+      // the restored photo isn't stranded in an invisible folder.
+      await sql`UPDATE folders SET deleted_at = null WHERE id = ${rows[0].folder_id} AND deleted_at IS NOT NULL`;
+      return true;
     },
 
     async countPending() {
