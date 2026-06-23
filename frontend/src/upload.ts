@@ -36,6 +36,17 @@ export function isVideoFile(file: File): boolean {
   return file.type.startsWith("video/");
 }
 
+/** Reject if a promise doesn't settle within `ms` — keeps flaky <video> events from hanging the UI. */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`timeout: ${label}`)), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
+    );
+  });
+}
+
 /** Read a video's duration via a hidden <video> element. */
 function videoDuration(file: File): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -55,8 +66,9 @@ export async function validateVideo(file: File): Promise<void> {
     throw new Error(`Video ist zu groß (max. ${Math.round(MAX_VIDEO_BYTES / 1024 / 1024)} MB).`);
   }
   // Duration may be unreadable for some codecs — only reject when we actually know it.
+  // Time-boxed so a clip whose metadata never loads doesn't freeze "Prüfe Video …".
   let duration: number | null = null;
-  try { duration = await videoDuration(file); } catch { duration = null; }
+  try { duration = await withTimeout(videoDuration(file), 4000, "duration"); } catch { duration = null; }
   if (duration != null && Number.isFinite(duration) && duration > MAX_VIDEO_SECONDS + 0.5) {
     throw new Error(`Video ist zu lang (max. ${MAX_VIDEO_SECONDS} s).`);
   }
@@ -87,17 +99,17 @@ export async function makeVideoThumb(file: File): Promise<Blob> {
     (video as HTMLVideoElement & { playsInline: boolean }).playsInline = true;
     video.src = url;
 
-    await new Promise<void>((resolve, reject) => {
+    await withTimeout(new Promise<void>((resolve, reject) => {
       video.onloadeddata = () => resolve();
       video.onerror = () => reject(new Error("video load failed"));
-    });
+    }), 5000, "loadeddata");
 
     const target = Math.min(1, (video.duration || 2) / 2);
-    await new Promise<void>((resolve, reject) => {
+    await withTimeout(new Promise<void>((resolve, reject) => {
       video.onseeked = () => resolve();
       video.onerror = () => reject(new Error("seek failed"));
       video.currentTime = target;
-    });
+    }), 5000, "seek");
 
     const w = video.videoWidth, h = video.videoHeight;
     if (!w || !h) throw new Error("no frame");

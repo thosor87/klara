@@ -44,6 +44,8 @@ export function UploadDialog({ folderId, onClose, onUploaded }: {
       try {
         if (isVideo) {
           await validateVideo(file); // throws a user-facing message if too big/long
+          updated[i] = { ...updated[i], progress: "Erstelle Vorschau …" };
+          setFiles([...updated]);
           const thumb = await makeVideoThumb(file);
           updated[i] = { ...updated[i], progress: "Lädt Video hoch …" };
           setFiles([...updated]);
@@ -108,7 +110,7 @@ export function UploadDialog({ folderId, onClose, onUploaded }: {
         </button>
 
         {files.length > 0 && (
-          <ul className="file-list" aria-label="Ausgewählte Fotos">
+          <ul className="file-list" aria-label="Ausgewählte Dateien">
             {files.map((f, i) => (
               <li key={i} className={`file-item file-${f.status}`}>
                 <span className="file-name">{f.file.name}</span>
@@ -126,7 +128,7 @@ export function UploadDialog({ folderId, onClose, onUploaded }: {
           <button onClick={onClose} className="btn-ghost-dark" disabled={busy}>Schließen</button>
           {files.length > 0 && hasRetryable && (
             <button onClick={startUpload} disabled={busy}>
-              {busy ? "Lädt hoch …" : `${files.filter(f => f.status !== "done").length} Foto${files.filter(f => f.status !== "done").length !== 1 ? "s" : ""} hochladen`}
+              {busy ? "Lädt hoch …" : `${files.filter(f => f.status !== "done").length} ${files.filter(f => f.status !== "done").length !== 1 ? "Dateien" : "Datei"} hochladen`}
             </button>
           )}
         </div>
