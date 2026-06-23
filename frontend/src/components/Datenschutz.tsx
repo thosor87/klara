@@ -17,9 +17,9 @@ export function Datenschutz() {
       <p>
         Verantwortlich für die Datenverarbeitung in dieser Anwendung ist:
         <br />
-        Thomas Soring (LILAPIXEL)
+        Thomas Soring
         <br />
-        Anschrift: <span className="legal-placeholder">[Platzhalter — siehe Impressum]</span>
+        Le-Corbusier-Str. 31b, 26127 Oldenburg
         <br />
         E-Mail: <a href="mailto:tsoring@lilapixel.de">tsoring@lilapixel.de</a>
       </p>
