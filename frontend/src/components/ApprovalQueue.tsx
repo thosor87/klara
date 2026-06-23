@@ -146,7 +146,8 @@ export function ApprovalQueue() {
                 onClick={() => setReviewIndex(i)}
                 aria-label="Foto in Vollbild prüfen"
               >
-                <img src={item.thumbUrl} alt={item.caption || "Foto"} loading="lazy" className="approval-thumb" />
+                <img src={item.thumbUrl} alt={item.caption || (item.type === "video" ? "Video" : "Foto")} loading="lazy" className="approval-thumb" />
+                {item.type === "video" && <span className="video-badge" aria-hidden="true" />}
               </button>
               <input type="checkbox" className="approval-checkbox"
                 checked={selected.has(item.id)}

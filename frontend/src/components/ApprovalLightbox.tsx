@@ -61,11 +61,11 @@ export function ApprovalLightbox({
     return () => { document.body.style.overflow = prevOverflow; };
   }, []);
 
-  // Preload neighbours for snappy review.
+  // Preload neighbouring photos for snappy review (skip videos — different element).
   useEffect(() => {
     [index + 1, index - 1].forEach((i) => {
       const it = items[((i % total) + total) % total];
-      if (it) { const img = new Image(); img.src = it.webUrl; }
+      if (it && it.type !== "video") { const img = new Image(); img.src = it.webUrl; }
     });
   }, [index, items, total]);
 
@@ -87,7 +87,17 @@ export function ApprovalLightbox({
       </div>
 
       <div className="approval-lb-stage">
-        <img className="approval-lb-img" src={item.webUrl} alt={item.caption || "Foto"} draggable={false} />
+        {item.type === "video" ? (
+          <video
+            className="approval-lb-img approval-lb-video"
+            src={item.webUrl}
+            controls
+            playsInline
+            preload="metadata"
+          />
+        ) : (
+          <img className="approval-lb-img" src={item.webUrl} alt={item.caption || "Foto"} draggable={false} />
+        )}
         {total > 1 && (
           <>
             <button className="approval-lb-nav approval-lb-prev" onClick={prev} aria-label="Vorheriges Foto">‹</button>
