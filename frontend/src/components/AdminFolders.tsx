@@ -96,7 +96,7 @@ function FolderFormFields({
       </div>
 
       <div className="album-body">
-      <div className="album-field">
+      <div className="album-field album-classes">
         <div className="album-label-row">
           <span className="album-label">Für welche Klassen?</span>
           <Link to="/verwaltung/klassen" className="album-label-link">Klassen verwalten</Link>
@@ -129,27 +129,34 @@ function FolderFormFields({
         )}
       </div>
 
-      <div className="album-field">
+      <div className="album-field album-dates">
         <span className="album-label">Zeitraum <span className="album-label-opt">optional</span></span>
-        <div className="album-daterange">
-          <label className="album-date">
-            <span className="album-date-cap">Von</span>
-            <input
-              type="date"
-              value={form.startDate}
-              onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))}
-            />
-          </label>
-          <span className="album-date-sep" aria-hidden="true">–</span>
-          <label className="album-date">
-            <span className="album-date-cap">Bis</span>
-            <input
-              type="date"
-              value={form.endDate}
-              min={form.startDate || undefined}
-              onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))}
-            />
-          </label>
+        <div className="album-rangepill">
+          <svg className="album-rangepill-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="16" rx="2.5" />
+            <line x1="3" y1="9.5" x2="21" y2="9.5" />
+            <line x1="8" y1="3" x2="8" y2="6.5" />
+            <line x1="16" y1="3" x2="16" y2="6.5" />
+          </svg>
+          <input
+            type="date"
+            className="album-rangepill-input"
+            aria-label="Von"
+            value={form.startDate}
+            onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
+            onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))}
+          />
+          <span className="album-rangepill-arrow" aria-hidden="true">→</span>
+          <input
+            type="date"
+            className="album-rangepill-input"
+            aria-label="Bis"
+            value={form.endDate}
+            min={form.startDate || undefined}
+            onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
+            onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))}
+          />
         </div>
       </div>
       </div>
