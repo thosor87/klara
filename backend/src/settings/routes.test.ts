@@ -201,7 +201,7 @@ describe("GET /api/admin/class-options", () => {
     const leg = body.find((b) => b.id === "leg")!;
     const coh = body.find((b) => b.id === "coh")!;
     expect(leg).toMatchObject({ status: "legacy", label: "Legacy A" });
-    expect(coh).toMatchObject({ status: "active", label: "1m", schoolYear: `${sy}/${sy + 1}` });
+    expect(coh).toMatchObject({ status: "active", label: "Klasse 1m", schoolYear: `${sy}/${sy + 1}` });
   });
 
   it("member → 403", async () => {
@@ -269,7 +269,7 @@ describe("POST /api/admin/class-options", () => {
       payload: { track: "m", startYear: sy }, // grade 1 → active "1m"
     });
     expect(res.statusCode).toBe(201);
-    expect(res.json()).toMatchObject({ track: "m", startYear: sy, status: "active", label: "1m" });
+    expect(res.json()).toMatchObject({ track: "m", startYear: sy, status: "active", label: "Klasse 1m" });
     const list = await repo.list();
     expect(list.some((o) => o.track === "m" && o.startYear === sy)).toBe(true);
   });
