@@ -916,10 +916,13 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
 .settings-add-form button { width: auto; margin: 0; flex-shrink: 0; }
 .settings-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .5rem; }
 .settings-list-row {
-  display: flex; align-items: center; gap: .75rem;
+  display: flex; align-items: center; gap: .5rem .75rem; flex-wrap: wrap;
   background: var(--purple-tint); border-radius: 12px; padding: .65rem .9rem;
 }
 .settings-list-label { font-weight: 600; color: var(--ink); word-break: break-all; }
+/* Class names are short — never break them character-by-character on narrow screens;
+   the action buttons wrap to the next line instead. */
+.class-row-label { word-break: normal; white-space: nowrap; }
 .settings-remove-btn {
   margin-left: auto; width: auto; background: transparent; color: var(--danger);
   border: 1px solid var(--purple-line); border-radius: 999px; padding: .35rem .8rem;

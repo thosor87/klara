@@ -322,7 +322,7 @@ export function ClassesCard() {
             const pill = statusPill(c.status);
             return (
               <li key={c.id} className="settings-list-row">
-                <span className="settings-list-label">{c.label}</span>
+                <span className="settings-list-label class-row-label">{c.label}</span>
                 <span className={`class-status-pill ${pill.cls}`}>{pill.text}</span>
                 {c.status === "active" && c.schoolYear && (
                   <span className="muted class-status-meta">{c.schoolYear}</span>
