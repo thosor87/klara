@@ -840,6 +840,29 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
 }
 .settings-remove-btn:hover:not(:disabled) { background: #fff; border-color: var(--danger); }
 .settings-remove-btn:disabled { opacity: .5; cursor: default; }
+.settings-edit-btn { color: var(--purple); }
+.settings-edit-btn:hover:not(:disabled) { border-color: var(--purple); }
+
+/* ---- Klassen als Kohorten: Anlege-Formular + Status-Pills ---- */
+.class-add-form { align-items: flex-end; }
+.class-add-form .form-field { flex: 1 1 160px; }
+.class-add-form input[type="text"] { flex: none; }
+.class-add-form button { align-self: stretch; min-height: 46px; }
+.class-row-actions { margin-left: auto; display: inline-flex; gap: .4rem; flex-shrink: 0; }
+.class-status-meta { font-size: .8rem; }
+.settings-list-row--editing { background: #fff; border: 1px solid var(--purple-line); }
+.class-edit-form { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; width: 100%; }
+.class-edit-form .form-field { flex: 1 1 150px; }
+
+.class-status-pill {
+  border-radius: 999px; padding: .12rem .55rem; font-size: .76rem; font-weight: 600;
+}
+.class-status--active   { background: #d1fae5; color: #065f46; }
+.class-status--alumni   { background: var(--purple-tint); color: var(--purple-deep); }
+.class-status--archived { background: #e5e7eb; color: #4b5563; }
+.class-status--expired  { background: #fee2e2; color: #991b1b; }
+.class-status--future   { background: #dbeafe; color: #1e40af; }
+.class-status--legacy   { background: #fef3c7; color: #92400e; }
 
 /* ===========================================================================
    Footer + legal/help prose pages

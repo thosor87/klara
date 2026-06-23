@@ -13,6 +13,17 @@ export function schoolYearOptions(): string[] {
   return out.reverse();
 }
 
+/**
+ * Einschulungsjahr options for the cohort form: the last ~6 years up to next
+ * year (so an upcoming cohort can be created), newest first.
+ */
+export function einschulungsjahrOptions(): number[] {
+  const next = new Date().getFullYear() + 1;
+  const out: number[] = [];
+  for (let y = next; y >= next - 6; y--) out.push(y);
+  return out;
+}
+
 /** Normalize any date-ish value to "YYYY-MM-DD" (tolerates full ISO timestamps). */
 export function toDateInput(v?: string | null): string {
   return v ? v.slice(0, 10) : "";
