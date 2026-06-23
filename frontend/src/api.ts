@@ -31,6 +31,28 @@ export interface User {
   createdAt: string;
 }
 
+export interface ReportItem {
+  id: string;
+  itemId: string;
+  reason: string;
+  status: "open" | "answered" | "ignored" | "trashed";
+  response: string;
+  createdAt: string;
+  thumbUrl: string;
+  webUrl: string;
+  folderName: string;
+  reportedByEmail: string;
+}
+
+export interface TrashItem {
+  id: string;
+  folderName: string;
+  caption: string;
+  trashedAt: string;
+  daysLeft: number;
+  thumbUrl: string;
+}
+
 export interface PresignResult {
   itemId: string;
   webUploadUrl: string;
@@ -138,6 +160,42 @@ export const api = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ ids }),
     });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  // Reports
+  async postReport(itemId: string, reason: string): Promise<{ ok: boolean }> {
+    const res = await fetch(`/api/items/${itemId}/reports`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    if (res.status === 404) throw Object.assign(new Error("not_found"), { status: 404 });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+  async getReports(): Promise<ReportItem[]> {
+    const data = await jsonOrNull(await fetch("/api/admin/reports"));
+    return data ?? [];
+  },
+  async patchReport(id: string, action: "ignore" | "answer" | "delete", response?: string): Promise<ReportItem> {
+    const res = await fetch(`/api/admin/reports/${id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action, response }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  // Trash
+  async getTrash(): Promise<TrashItem[]> {
+    const data = await jsonOrNull(await fetch("/api/admin/trash"));
+    return data ?? [];
+  },
+  async restoreTrashItem(itemId: string): Promise<{ ok: boolean }> {
+    const res = await fetch(`/api/admin/trash/${itemId}/restore`, { method: "POST" });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
