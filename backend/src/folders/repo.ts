@@ -82,11 +82,13 @@ export function createPostgresFoldersRepo(sql: SqlTag): FoldersRepo {
     },
 
     async create(data) {
+      // New folders append at the end of the manual order.
       const rows = await sql<Record<string, unknown>[]>`
-        INSERT INTO folders (name, school_year, class_label, created_by, cover_item_id, start_date, end_date)
+        INSERT INTO folders (name, school_year, class_label, created_by, cover_item_id, start_date, end_date, sort_order)
         VALUES (
           ${data.name}, ${data.schoolYear}, ${data.classLabel}, ${data.createdBy},
-          ${data.coverItemId ?? null}, ${data.startDate ?? null}, ${data.endDate ?? null}
+          ${data.coverItemId ?? null}, ${data.startDate ?? null}, ${data.endDate ?? null},
+          (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM folders)
         )
         RETURNING *`;
       return mapFolder(rows[0]);
@@ -132,9 +134,12 @@ export function createPostgresFoldersRepo(sql: SqlTag): FoldersRepo {
     },
 
     async move(id, direction) {
-      // Get all folders ordered by sort_order, created_at to find neighbors
-      const all = await sql<{ id: string; sort_order: number }[]>`
-        SELECT id, sort_order FROM folders ORDER BY sort_order, created_at`;
+      // Take the current visible order, swap the item with its neighbor, then
+      // re-index everyone to distinct 0..n-1 values. Reindexing (rather than a
+      // pairwise sort_order swap) is robust even when folders share a sort_order
+      // (e.g. all default 0), and uses single-id UPDATEs (correct uuid binding).
+      const all = await sql<{ id: string }[]>`
+        SELECT id FROM folders ORDER BY sort_order, created_at`;
 
       const idx = all.findIndex((f) => f.id === id);
       if (idx === -1) return false;
@@ -142,16 +147,14 @@ export function createPostgresFoldersRepo(sql: SqlTag): FoldersRepo {
       const neighborIdx = direction === "up" ? idx - 1 : idx + 1;
       if (neighborIdx < 0 || neighborIdx >= all.length) return false;
 
-      const current = all[idx];
-      const neighbor = all[neighborIdx];
+      const order = all.map((f) => f.id);
+      [order[idx], order[neighborIdx]] = [order[neighborIdx], order[idx]];
 
-      // Swap sort_orders
-      await sql`
-        UPDATE folders SET sort_order = CASE
-          WHEN id = ${current.id} THEN ${neighbor.sort_order}
-          WHEN id = ${neighbor.id} THEN ${current.sort_order}
-        END
-        WHERE id IN (${current.id}, ${neighbor.id})`;
+      await sql.begin(async (tx) => {
+        for (let k = 0; k < order.length; k++) {
+          await tx`UPDATE folders SET sort_order = ${k} WHERE id = ${order[k]}`;
+        }
+      });
 
       return true;
     },
