@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useSearchParams, Link } from "react-router-dom";
-import { api, type Folder, type Item } from "../api";
+import { useParams, useSearchParams, useOutletContext, Link } from "react-router-dom";
+import { api, type Folder, type Item, type Me } from "../api";
 import { UploadDialog } from "./UploadDialog";
 import { Gallery } from "./Gallery";
 import { Lightbox } from "./Lightbox";
@@ -9,8 +9,12 @@ import { useConfirm } from "./ConfirmDialog";
 
 type SortOrder = "newest" | "oldest";
 
+type OutletCtx = { me?: Me };
+
 export function FolderView() {
   const { folderId = "" } = useParams();
+  const { me } = useOutletContext<OutletCtx>();
+  const isAdmin = me?.role === "admin";
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [folder, setFolder] = useState<Folder | null>(null);
@@ -176,7 +180,9 @@ export function FolderView() {
           items={approved}
           index={lightboxIndex}
           folderId={folderId}
+          isAdmin={isAdmin}
           onIndexChange={changeLightbox}
+          onChanged={loadItems}
           onClose={closeLightbox}
         />
       )}

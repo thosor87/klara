@@ -252,6 +252,15 @@ export const api = {
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
+  async unapproveItems(ids: string[]): Promise<{ unapproved: number }> {
+    const res = await fetch("/api/admin/items/unapprove", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
 
   // Reports
   async postReport(itemId: string, reason: string): Promise<{ ok: boolean }> {

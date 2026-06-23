@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { type Item, api } from "../api";
 import { downloadImage, buildFilename } from "../download";
 import { ShareDialog } from "./ShareDialog";
+import { useConfirm } from "./ConfirmDialog";
 
 const SLIDESHOW_INTERVALS = [3, 5, 10] as const;
 
@@ -14,13 +15,18 @@ export function Lightbox({
   items,
   index,
   folderId,
+  isAdmin = false,
   onIndexChange,
+  onChanged,
   onClose,
 }: {
   items: Item[];
   index: number;
   folderId: string;
+  isAdmin?: boolean;
   onIndexChange: (i: number) => void;
+  /** Called after an admin action mutated the folder (e.g. unapprove). */
+  onChanged?: () => void;
   onClose: () => void;
 }) {
   const total = items.length;
@@ -28,6 +34,9 @@ export function Lightbox({
 
   const [showShare, setShowShare] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [unapproving, setUnapproving] = useState(false);
+  const { ask, dialog: confirmDialog } = useConfirm();
+  const confirmOpen = confirmDialog !== null;
   const [playing, setPlaying] = useState(false);
   const [interval, setIntervalSecs] = useState<number>(5);
   const [showIntervalMenu, setShowIntervalMenu] = useState(false);
@@ -56,7 +65,7 @@ export function Lightbox({
   // --- Keyboard ---
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (showShare || showReport) return; // dialogs own Esc while open
+      if (showShare || showReport || confirmOpen) return; // dialogs own Esc while open
       switch (e.key) {
         case "ArrowRight": e.preventDefault(); next(); break;
         case "ArrowLeft": e.preventDefault(); prev(); break;
@@ -68,7 +77,7 @@ export function Lightbox({
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [next, prev, go, total, onClose, showShare, showReport]);
+  }, [next, prev, go, total, onClose, showShare, showReport, confirmOpen]);
 
   // --- Body scroll lock + focus management ---
   useEffect(() => {
@@ -155,6 +164,25 @@ export function Lightbox({
     }
   }
 
+  async function handleUnapprove() {
+    if (unapproving) return;
+    const ok = await ask({
+      title: "Foto zurückziehen",
+      message: "Dieses Foto zurückziehen? Es geht zurück in die Freigabe.",
+      confirmLabel: "Zurückziehen",
+      danger: true,
+    });
+    if (!ok) return;
+    setUnapproving(true);
+    try {
+      await api.unapproveItems([item.id]);
+      onClose();
+      onChanged?.();
+    } finally {
+      setUnapproving(false);
+    }
+  }
+
   return (
     <div
       className={`lightbox${playing ? " is-playing" : ""}${reduced ? " reduced" : ""}`}
@@ -185,6 +213,16 @@ export function Lightbox({
           <button className="lb-icon-btn" onClick={() => setShowReport(true)} aria-label="Foto melden">
             <FlagIcon /><span className="lb-btn-label">Melden</span>
           </button>
+          {isAdmin && (
+            <button
+              className="lb-icon-btn lb-unapprove"
+              onClick={handleUnapprove}
+              disabled={unapproving}
+              aria-label="Foto zurückziehen"
+            >
+              <UndoIcon /><span className="lb-btn-label">{unapproving ? "Lädt …" : "Zurückziehen"}</span>
+            </button>
+          )}
           <button className="lb-icon-btn lb-close" onClick={onClose} aria-label="Schließen">
             <CloseIcon />
           </button>
@@ -273,6 +311,8 @@ export function Lightbox({
           onClose={() => setShowReport(false)}
         />
       )}
+
+      {confirmDialog}
     </div>
   );
 }
@@ -364,3 +404,4 @@ function PauseIcon() { return <svg viewBox="0 0 24 24" width="18" height="18" {.
 function ShareIcon() { return <svg viewBox="0 0 24 24" width="20" height="20" {...sw}><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.6" y1="13.5" x2="15.4" y2="17.5" /><line x1="15.4" y1="6.5" x2="8.6" y2="10.5" /></svg>; }
 function DownloadIcon() { return <svg viewBox="0 0 24 24" width="20" height="20" {...sw}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>; }
 function FlagIcon() { return <svg viewBox="0 0 24 24" width="20" height="20" {...sw}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" /></svg>; }
+function UndoIcon() { return <svg viewBox="0 0 24 24" width="20" height="20" {...sw}><polyline points="9 14 4 9 9 4" /><path d="M4 9h11a5 5 0 0 1 0 10h-1" /></svg>; }
