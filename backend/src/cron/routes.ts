@@ -23,7 +23,9 @@ async function requireCron(
 ): Promise<boolean> {
   const auth = req.headers["authorization"] ?? "";
   const expected = `Bearer ${cronSecret}`;
-  // Constant-time comparison is fine here — cronSecret is not user input to exploit timing
+  // Fail closed: an unset/empty CRON_SECRET can never match (the endpoints are
+  // unreachable until the secret is configured in the environment). Plain
+  // comparison — timing is not a concern for a fixed shared secret.
   if (!cronSecret || auth !== expected) {
     await reply.code(401).send({ error: "unauthorized" });
     return false;
