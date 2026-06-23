@@ -53,6 +53,7 @@ function fakeService(over: Partial<ItemsService> = {}): ItemsService {
     listPending: async () => [],
     approve: async (ids) => ({ approved: ids.length }),
     reject: async (ids) => ({ rejected: ids.length }),
+    unapprove: async (ids) => ({ unapproved: ids.length }),
     deleteOwnPending: async () => ({ deleted: true }),
     ...over,
   };
@@ -336,6 +337,55 @@ describe("POST /api/admin/items/reject", () => {
       payload: { ids: [] },
     });
     expect(emptyIds.statusCode).toBe(400);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/items/unapprove
+// ---------------------------------------------------------------------------
+
+describe("POST /api/admin/items/unapprove", () => {
+  it("as admin → 200 + { unapproved: 2 }", async () => {
+    const app = await makeApp(fakeService(), ADMIN);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/items/unapprove",
+      payload: { ids: ["id1", "id2"] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ unapproved: 2 });
+  });
+
+  it("missing/empty ids → 400", async () => {
+    const app = await makeApp(fakeService(), ADMIN);
+
+    const noIds = await app.inject({
+      method: "POST",
+      url: "/api/admin/items/unapprove",
+      payload: {},
+    });
+    expect(noIds.statusCode).toBe(400);
+
+    const emptyIds = await app.inject({
+      method: "POST",
+      url: "/api/admin/items/unapprove",
+      payload: { ids: [] },
+    });
+    expect(emptyIds.statusCode).toBe(400);
+  });
+
+  it("as member → 403", async () => {
+    const app = await makeApp(fakeService(), MEMBER);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/items/unapprove",
+      payload: { ids: ["id1"] },
+    });
+
+    expect(res.statusCode).toBe(403);
   });
 });
 

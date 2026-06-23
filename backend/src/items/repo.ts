@@ -43,6 +43,8 @@ export interface ItemsRepo {
   listPending(): Promise<ItemWithFolderName[]>;
   setStatusApproved(ids: string[], approvedBy: string): Promise<number>;
   setStatusTrashed(ids: string[]): Promise<number>;
+  /** Set approved items back to pending (clears approved_by). Returns count affected. */
+  setStatusPending(ids: string[]): Promise<number>;
   findById(id: string): Promise<Item | null>;
   /** Delete a DB row by id, returning its s3Key+thumbKey (or null if not found). */
   deleteById(id: string): Promise<TrashedS3Keys | null>;
@@ -137,6 +139,16 @@ export function createPostgresItemsRepo(sql: SqlTag): ItemsRepo {
         UPDATE items
         SET status = 'trashed', trashed_at = now()
         WHERE id = ANY(${sql.array(ids)}::uuid[]) AND status = 'pending'
+        RETURNING id`;
+      return rows.length;
+    },
+
+    async setStatusPending(ids) {
+      if (ids.length === 0) return 0;
+      const rows = await sql<{ id: string }[]>`
+        UPDATE items
+        SET status = 'pending', approved_by = NULL
+        WHERE id = ANY(${sql.array(ids)}::uuid[]) AND status = 'approved'
         RETURNING id`;
       return rows.length;
     },

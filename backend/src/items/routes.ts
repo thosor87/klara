@@ -143,4 +143,20 @@ export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): 
       return reply.send(result);
     },
   );
+
+  // POST /api/admin/items/unapprove — set approved items back to pending (admin only)
+  app.post<{ Body: { ids?: string[] } }>(
+    "/api/admin/items/unapprove",
+    { preHandler: requireAdmin },
+    async (req, reply) => {
+      const { ids } = req.body ?? {};
+
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return reply.code(400).send({ error: "ids must be a non-empty array" });
+      }
+
+      const result = await itemsService.unapprove(ids);
+      return reply.send(result);
+    },
+  );
 }

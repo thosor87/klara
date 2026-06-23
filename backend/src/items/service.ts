@@ -29,6 +29,8 @@ export interface ItemsService {
   listPending(): Promise<Array<ItemWithFolderName & { thumbUrl: string; webUrl: string }>>;
   approve(ids: string[], adminId: string): Promise<{ approved: number }>;
   reject(ids: string[]): Promise<{ rejected: number }>;
+  /** Set approved items back to pending. Returns count affected. */
+  unapprove(ids: string[]): Promise<{ unapproved: number }>;
   /** Delete own pending item; throws not_allowed if not found, not owned, or not pending. */
   deleteOwnPending(itemId: string, userId: string): Promise<{ deleted: boolean }>;
 }
@@ -134,6 +136,11 @@ export function createItemsService(deps: ItemsServiceDeps): ItemsService {
     async reject(ids) {
       const rejected = await itemsRepo.setStatusTrashed(ids);
       return { rejected };
+    },
+
+    async unapprove(ids) {
+      const unapproved = await itemsRepo.setStatusPending(ids);
+      return { unapproved };
     },
 
     async deleteOwnPending(itemId, userId) {

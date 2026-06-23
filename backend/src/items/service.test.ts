@@ -68,6 +68,7 @@ function fakeItemsRepo(overrides: Partial<ItemsRepo> = {}): ItemsRepo {
     listPending: async () => [],
     setStatusApproved: async (ids) => ids.length,
     setStatusTrashed: async (ids) => ids.length,
+    setStatusPending: async () => 0,
     findById: async () => null,
     deleteById: async () => null,
     listTrashed: async () => [],
@@ -421,6 +422,22 @@ describe("reject", () => {
 
     expect(setStatusTrashed).toHaveBeenCalledWith(["id1", "id2", "id3"]);
     expect(result).toEqual({ rejected: 3 });
+  });
+});
+
+describe("unapprove", () => {
+  it("calls setStatusPending with correct ids and returns { unapproved: n }", async () => {
+    const setStatusPending = vi.fn(async (ids: string[]) => ids.length);
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo({ setStatusPending }),
+      foldersRepo: fakeFoldersRepo(),
+      storage: fakeStorage(),
+    });
+
+    const result = await svc.unapprove(["id1", "id2"]);
+
+    expect(setStatusPending).toHaveBeenCalledWith(["id1", "id2"]);
+    expect(result).toEqual({ unapproved: 2 });
   });
 });
 

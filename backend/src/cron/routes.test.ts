@@ -35,6 +35,7 @@ function fakeItemsRepo(overrides: Partial<ItemsRepo> = {}): ItemsRepo {
     listPending: async () => [],
     setStatusApproved: async () => 0,
     setStatusTrashed: async () => 0,
+    setStatusPending: async () => 0,
     findById: async () => null,
     deleteById: async () => null,
     listTrashed: async () => [],
