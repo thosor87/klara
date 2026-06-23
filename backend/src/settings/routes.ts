@@ -75,6 +75,9 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsRoute
       // A class needs either a (legacy) label or a cohort start year.
       const hasLabel = typeof label === "string" && label.trim().length > 0;
       const hasStartYear = typeof startYear === "number";
+      if (hasStartYear && (!Number.isInteger(startYear) || startYear! < 2000 || startYear! > 2100)) {
+        return reply.code(400).send({ error: "startYear must be a plausible year" });
+      }
       if (!hasLabel && !hasStartYear) {
         return reply.code(400).send({ error: "label or startYear is required" });
       }

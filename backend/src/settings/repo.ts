@@ -66,6 +66,11 @@ export interface ClassOptionsRepo {
   remove(id: string): Promise<void>;
 }
 
+/** Stable, UNIQUE internal label key for a cohort (the shown label is computed). */
+function cohortKey(track: string, startYear: number | null): string {
+  return startYear !== null ? `${track}@${startYear}` : "";
+}
+
 function mapClassOption(r: Record<string, unknown>): ClassOption {
   return {
     id: r.id as string,
@@ -86,10 +91,14 @@ export function createPostgresClassOptionsRepo(sql: SqlTag): ClassOptionsRepo {
     },
 
     async add(input) {
-      const label = (input.label ?? "").trim();
       const track = (input.track ?? "").trim();
       const startYear = input.startYear ?? null;
-      // Idempotent on label (label is UNIQUE): re-adding an existing label
+      // Cohorts display a COMPUTED label (cohortInfo); the stored `label` is only
+      // an internal UNIQUE key. For cohorts derive a stable key `track@startYear`
+      // so two cohorts never collide on an empty label (which would make the
+      // ON CONFLICT overwrite the first cohort instead of adding a second).
+      const label = (input.label ?? "").trim() || cohortKey(track, startYear);
+      // Idempotent on the key (label is UNIQUE): re-adding the same cohort/label
       // updates track/start_year instead of throwing a raw 23505 → 500.
       const rows = await sql<Record<string, unknown>[]>`
         INSERT INTO class_options (label, track, start_year)
@@ -101,21 +110,28 @@ export function createPostgresClassOptionsRepo(sql: SqlTag): ClassOptionsRepo {
     },
 
     async update(id, input) {
-      const updates: Record<string, unknown> = {};
-      if (input.label !== undefined) updates.label = input.label.trim();
-      if (input.track !== undefined) updates.track = input.track.trim();
-      // startYear may be set to null explicitly (back to legacy), so a plain
-      // `!== undefined` check distinguishes "not provided" from "set to null".
-      if (input.startYear !== undefined) updates.start_year = input.startYear;
-
-      if (Object.keys(updates).length === 0) {
-        const rows = await sql<Record<string, unknown>[]>`
-          SELECT * FROM class_options WHERE id = ${id}`;
-        return rows.length ? mapClassOption(rows[0]) : null;
+      const current = (await sql<Record<string, unknown>[]>`
+        SELECT * FROM class_options WHERE id = ${id}`)[0];
+      if (!current) return null;
+      if (input.label === undefined && input.track === undefined && input.startYear === undefined) {
+        return mapClassOption(current);
       }
 
+      const track = input.track !== undefined ? input.track.trim() : ((current.track as string) ?? "");
+      // startYear may be set to null explicitly (back to legacy).
+      const startYear = input.startYear !== undefined ? input.startYear : ((current.start_year as number | null) ?? null);
+      // Keep the internal label key consistent: explicit label wins; otherwise a
+      // cohort gets its `track@startYear` key, a legacy class keeps its label.
+      const label =
+        input.label !== undefined
+          ? input.label.trim()
+          : startYear !== null
+            ? cohortKey(track, startYear)
+            : ((current.label as string) ?? "");
+
       const rows = await sql<Record<string, unknown>[]>`
-        UPDATE class_options SET ${sql(updates)} WHERE id = ${id} RETURNING *`;
+        UPDATE class_options SET label = ${label}, track = ${track}, start_year = ${startYear}
+        WHERE id = ${id} RETURNING *`;
       return rows.length ? mapClassOption(rows[0]) : null;
     },
 
