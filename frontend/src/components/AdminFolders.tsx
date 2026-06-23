@@ -98,21 +98,20 @@ function FolderFormFields({
             Noch keine aktiven Klassen. Lege sie unter „Klassen verwalten“ an.
           </p>
         ) : (
-          <>
-            <div className="class-toggle-row" role="group" aria-label="Klassen">
-              {primary.map(renderChip)}
-              {showAll && others.map(renderChip)}
-            </div>
+          <div className="class-toggle-row" role="group" aria-label="Klassen">
+            {primary.map(renderChip)}
+            {showAll && others.map(renderChip)}
             {others.length > 0 && !showAll && (
               <button
                 type="button"
-                className="link-btn class-more-btn"
+                className="class-add-more"
                 onClick={() => setShowAll(true)}
+                title="Weitere Klassen berechtigen"
               >
-                + Weitere Klassen berechtigen
+                + weitere Klassen
               </button>
             )}
-          </>
+          </div>
         )}
         {form.classIds.length === 0 && selectable.length > 0 && (
           <p className="muted class-toggle-hint">Ohne Klasse sehen nur Admins dieses Album.</p>
