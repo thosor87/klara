@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type Item } from "../api";
+import { type Item, api } from "../api";
 import { downloadImage, buildFilename } from "../download";
 import { ShareDialog } from "./ShareDialog";
 
@@ -27,6 +27,7 @@ export function Lightbox({
   const item = items[index];
 
   const [showShare, setShowShare] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [interval, setIntervalSecs] = useState<number>(5);
   const [showIntervalMenu, setShowIntervalMenu] = useState(false);
@@ -55,7 +56,7 @@ export function Lightbox({
   // --- Keyboard ---
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (showShare) return; // ShareDialog owns Esc while open
+      if (showShare || showReport) return; // dialogs own Esc while open
       switch (e.key) {
         case "ArrowRight": e.preventDefault(); next(); break;
         case "ArrowLeft": e.preventDefault(); prev(); break;
@@ -67,7 +68,7 @@ export function Lightbox({
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [next, prev, go, total, onClose, showShare]);
+  }, [next, prev, go, total, onClose, showShare, showReport]);
 
   // --- Body scroll lock + focus management ---
   useEffect(() => {
@@ -88,7 +89,7 @@ export function Lightbox({
       const root = overlayRef.current;
       if (!root) return;
       const focusables = root.querySelectorAll<HTMLElement>(
-        'button, [href], input, [tabindex]:not([tabindex="-1"])',
+        'button, [href], input, textarea, [tabindex]:not([tabindex="-1"])',
       );
       const list = Array.from(focusables).filter((el) => !el.hasAttribute("disabled"));
       if (!list.length) return;
@@ -102,7 +103,7 @@ export function Lightbox({
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [showShare]);
+  }, [showShare, showReport]);
 
   // --- Preload neighbours for snappy paging ---
   useEffect(() => {
@@ -180,6 +181,9 @@ export function Lightbox({
           </button>
           <button className="lb-icon-btn" onClick={handleDownload} disabled={downloading} aria-label="Herunterladen">
             <DownloadIcon /><span className="lb-btn-label">{downloading ? "Lädt …" : "Download"}</span>
+          </button>
+          <button className="lb-icon-btn" onClick={() => setShowReport(true)} aria-label="Foto melden">
+            <FlagIcon /><span className="lb-btn-label">Melden</span>
           </button>
           <button className="lb-icon-btn lb-close" onClick={onClose} aria-label="Schließen">
             <CloseIcon />
@@ -262,6 +266,90 @@ export function Lightbox({
           onClose={() => setShowShare(false)}
         />
       )}
+
+      {showReport && (
+        <ReportDialog
+          itemId={item.id}
+          onClose={() => setShowReport(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+/* --- Report Dialog --- */
+function ReportDialog({ itemId, onClose }: { itemId: string; onClose: () => void }) {
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
+
+  // Esc closes
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") { e.preventDefault(); onClose(); }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!reason.trim() || busy) return;
+    setBusy(true); setErr("");
+    try {
+      await api.postReport(itemId, reason.trim());
+      setDone(true);
+    } catch (ex: any) {
+      if (ex?.status === 404) {
+        setErr("Dieses Foto ist nicht mehr verfügbar.");
+      } else {
+        setErr("Melden fehlgeschlagen. Bitte erneut versuchen.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="dialog-backdrop" role="dialog" aria-modal="true" aria-label="Foto melden">
+      <div className="dialog-card">
+        {done ? (
+          <>
+            <h2>Danke!</h2>
+            <p style={{ marginTop: ".5rem", color: "var(--ink-soft)" }}>
+              Die Lehrerin schaut sich das an.
+            </p>
+            <button onClick={onClose} style={{ marginTop: "1.25rem" }}>Schließen</button>
+          </>
+        ) : (
+          <>
+            <h2>Foto melden</h2>
+            <p style={{ marginTop: ".4rem", color: "var(--ink-soft)", fontSize: ".9rem" }}>
+              Bitte beschreibe kurz, warum du dieses Foto melden möchtest.
+            </p>
+            <form onSubmit={handleSubmit}>
+              <textarea
+                className="report-reason"
+                placeholder="Begründung (Pflichtfeld)"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={4}
+                required
+                autoFocus
+                style={{ marginTop: ".75rem" }}
+              />
+              {err && <p className="err">{err}</p>}
+              <div className="dialog-actions" style={{ marginTop: "1rem" }}>
+                <button type="button" className="btn-ghost-dark" onClick={onClose}>Abbrechen</button>
+                <button type="submit" disabled={busy || !reason.trim()}>
+                  {busy ? "Sendet …" : "Melden"}
+                </button>
+              </div>
+            </form>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -275,3 +363,4 @@ function PlayIcon() { return <svg viewBox="0 0 24 24" width="18" height="18" {..
 function PauseIcon() { return <svg viewBox="0 0 24 24" width="18" height="18" {...sw}><line x1="9" y1="5" x2="9" y2="19" /><line x1="15" y1="5" x2="15" y2="19" /></svg>; }
 function ShareIcon() { return <svg viewBox="0 0 24 24" width="20" height="20" {...sw}><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.6" y1="13.5" x2="15.4" y2="17.5" /><line x1="15.4" y1="6.5" x2="8.6" y2="10.5" /></svg>; }
 function DownloadIcon() { return <svg viewBox="0 0 24 24" width="20" height="20" {...sw}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>; }
+function FlagIcon() { return <svg viewBox="0 0 24 24" width="20" height="20" {...sw}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" /></svg>; }
