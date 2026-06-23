@@ -71,10 +71,8 @@ export async function defaultRuntime(): Promise<BuildOptions> {
   const mailer = config.mailTransport === "ses" ? createSesMailer() : createConsoleMailer();
   const domainsRepo = createPostgresDomainsRepo(sql);
   const classOptionsRepo = createPostgresClassOptionsRepo(sql);
-  // getAllowedDomains: fetches from DB at request time; falls back to config allowedDomains
-  // so existing env-var allowedDomains (allowlist) still works for active users.
-  // NOTE: config.allowedDomains is still used as the static override/allowlist in decideLoginAction
-  // but the primary domain list now comes from DB.
+  // Allowed login domains are the single source of truth in the DB (admin-managed,
+  // initially seeded from the old env var in migration 004), fetched at request time.
   const service = createAuthService({
     repo: authRepo, mailer,
     getAllowedDomains: async () => domainsRepo.list(),

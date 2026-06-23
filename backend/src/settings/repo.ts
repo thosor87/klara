@@ -69,9 +69,12 @@ export function createPostgresClassOptionsRepo(sql: SqlTag): ClassOptionsRepo {
     },
 
     async add(label) {
+      // Idempotent: re-adding an existing label returns the existing row
+      // (label is UNIQUE) instead of throwing a raw 23505 → 500.
       const rows = await sql<Record<string, unknown>[]>`
         INSERT INTO class_options (label)
         VALUES (${label})
+        ON CONFLICT (label) DO UPDATE SET label = EXCLUDED.label
         RETURNING *`;
       return mapClassOption(rows[0]);
     },
