@@ -1,0 +1,10 @@
+{
+  "name": "klara-video-transcoder",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "S3-triggered Lambda: transcode KlaRa video uploads to 720p H.264 + thumbnail",
+  "dependencies": {
+    "postgres": "^3.4.5"
+  }
+}
