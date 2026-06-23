@@ -1,4 +1,5 @@
 import type { Sql } from "postgres";
+import { cohortInfo, isMemberVisibleStatus } from "../classes/cohort.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SqlTag = Sql<any>;
@@ -108,6 +109,18 @@ export function createPostgresFoldersRepo(sql: SqlTag): FoldersRepo {
     return rows.map((r) => mapFolder(r, byFolder.get(r.id as string) ?? []));
   }
 
+  // Plan 7: a member only sees albums while their own class is in a
+  // member-visible lifecycle status (active/alumni/legacy). archived/expired/
+  // future classes are gated off entirely, regardless of folder_classes links.
+  // Returns true if the class is unknown (treat missing class as not visible).
+  async function classIsMemberVisible(classId: string): Promise<boolean> {
+    const rows = await sql<{ track: string; start_year: number | null }[]>`
+      SELECT track, start_year FROM class_options WHERE id = ${classId}`;
+    if (!rows.length) return false;
+    const { status } = cohortInfo(rows[0].track ?? "", rows[0].start_year ?? null, new Date());
+    return isMemberVisibleStatus(status);
+  }
+
   const repo: FoldersRepo = {
     async listAll() {
       const rows = await sql<Record<string, unknown>[]>`
@@ -123,6 +136,8 @@ export function createPostgresFoldersRepo(sql: SqlTag): FoldersRepo {
 
     async listForClass(classId) {
       if (!classId) return [];
+      // Lifecycle gate: an archived/expired/future class sees nothing.
+      if (!(await classIsMemberVisible(classId))) return [];
       const rows = await sql<Record<string, unknown>[]>`
         SELECT f.* FROM folders f
         JOIN folder_classes fc ON fc.folder_id = f.id
@@ -133,6 +148,8 @@ export function createPostgresFoldersRepo(sql: SqlTag): FoldersRepo {
 
     async isVisibleToClass(folderId, classId) {
       if (!classId) return false;
+      // Lifecycle gate first, then the folder_classes link check.
+      if (!(await classIsMemberVisible(classId))) return false;
       const rows = await sql<{ one: number }[]>`
         SELECT 1 AS one FROM folder_classes
         WHERE folder_id = ${folderId} AND class_id = ${classId}
