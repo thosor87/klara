@@ -7,6 +7,18 @@ export interface Folder {
   classLabel?: string;
   enabled: boolean;
   itemCount: number;
+  sortOrder?: number;
+  startDate?: string | null;
+  endDate?: string | null;
+  coverItemId?: string | null;
+  coverThumbUrl?: string | null;
+}
+
+export interface ClassOption {
+  id: string;
+  label: string;
+  sortOrder: number;
+  createdAt: string;
 }
 
 export interface Item {
@@ -16,6 +28,7 @@ export interface Item {
   createdAt: string;
   thumbUrl: string;
   webUrl: string;
+  mine?: boolean;
 }
 
 export interface PendingItem extends Item {
@@ -93,7 +106,14 @@ export const api = {
     const data = await jsonOrNull(await fetch("/api/folders"));
     return data ?? [];
   },
-  async createFolder(body: { name: string; schoolYear?: string; classLabel?: string }): Promise<Folder> {
+  async createFolder(body: {
+    name: string;
+    schoolYear?: string;
+    classLabel?: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    coverItemId?: string | null;
+  }): Promise<Folder> {
     const res = await fetch("/api/admin/folders", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -102,7 +122,15 @@ export const api = {
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
-  async updateFolder(id: string, body: { name?: string; schoolYear?: string; classLabel?: string; enabled?: boolean }): Promise<Folder> {
+  async updateFolder(id: string, body: {
+    name?: string;
+    schoolYear?: string;
+    classLabel?: string;
+    enabled?: boolean;
+    startDate?: string | null;
+    endDate?: string | null;
+    coverItemId?: string | null;
+  }): Promise<Folder> {
     const res = await fetch(`/api/admin/folders/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
@@ -110,6 +138,21 @@ export const api = {
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
+  },
+  async moveFolder(id: string, direction: "up" | "down"): Promise<{ moved: boolean }> {
+    const res = await fetch(`/api/admin/folders/${id}/move`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ direction }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  // Class options
+  async getClassOptions(): Promise<ClassOption[]> {
+    const data = await jsonOrNull(await fetch("/api/class-options"));
+    return data ?? [];
   },
 
   // Upload
@@ -138,6 +181,11 @@ export const api = {
   async getFolderItems(folderId: string): Promise<Item[]> {
     const data = await jsonOrNull(await fetch(`/api/folders/${folderId}/items`));
     return data ?? [];
+  },
+  async deleteItem(id: string): Promise<{ deleted: boolean }> {
+    const res = await fetch(`/api/items/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
   },
 
   // Admin
