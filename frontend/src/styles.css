@@ -1008,10 +1008,9 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
 /* ---- Geteilte Felder: ein klarer vertikaler Stapel ---- */
 .album-form { display: flex; flex-direction: column; gap: 1.35rem; }
 .album-field { display: flex; flex-direction: column; gap: .55rem; }
-/* Klassen (links, wachsend) + Zeitraum (rechts, kompakt) in einer Zeile; bricht auf schmal um */
-.album-body { display: flex; gap: 1.35rem 2.5rem; flex-wrap: wrap; align-items: flex-start; }
-.album-body > .album-field:first-child { flex: 1 1 300px; }
-.album-body > .album-field:last-child { flex: 0 0 auto; }
+/* Klassen + Zeitraum nebeneinander, beide inhaltsbreit, oben ausgerichtet; bricht auf schmal um */
+.album-body { display: flex; gap: 1.35rem 3rem; flex-wrap: wrap; align-items: flex-start; }
+.album-body > .album-field { flex: 0 0 auto; }
 
 /* Einheitliches Label: kleines Kicker-Caps */
 .album-label {
@@ -1023,7 +1022,7 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
   text-transform: none; color: var(--purple); opacity: .8;
 }
 .album-label-row {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  display: flex; align-items: baseline; justify-content: flex-start; gap: .9rem; flex-wrap: wrap;
 }
 .album-label-link {
   font-size: .8rem; font-weight: 600; color: var(--purple); text-decoration: none;
