@@ -531,3 +531,140 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
   .gallery-tile-btn:hover .gallery-img { transform: none; }
   .folder-card:hover { transform: none; }
 }
+
+/* ===========================================================================
+   Plan 5 — Feinschliff
+   =========================================================================== */
+
+/* ---- Form fields (labelled select / date) ---- */
+.form-field { display: flex; flex-direction: column; gap: .25rem; margin: 0; }
+.form-label { font-size: .78rem; color: var(--ink-soft); font-weight: 600; }
+.form-field select, .form-field input[type="date"] {
+  width: 100%; margin: 0;
+}
+.form-row { display: flex; gap: .6rem; flex-wrap: wrap; }
+.form-row .form-field { flex: 1 1 140px; }
+
+/* ---- Folder card cover (public list) ---- */
+.folder-cover {
+  width: 100%; aspect-ratio: 4 / 3; border-radius: var(--radius); overflow: hidden;
+  background: #e9e4f3; margin-bottom: .35rem; box-shadow: var(--shadow-sm);
+}
+.folder-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* ---- Admin folder rows: order arrows + cover thumb ---- */
+.admin-folder-row { flex-direction: row; align-items: center; }
+.admin-folder-row--editing { flex-direction: column; align-items: stretch; }
+.admin-folder-order { display: flex; flex-direction: column; gap: .2rem; }
+.order-btn {
+  width: 28px; height: 24px; padding: 0; margin: 0; line-height: 1;
+  background: var(--purple-tint); color: var(--purple); border: 1px solid var(--purple-line);
+  border-radius: 7px; font-size: .7rem; cursor: pointer;
+}
+.order-btn:hover:not(:disabled) { background: var(--purple); color: #fff; }
+.order-btn:disabled { opacity: .35; cursor: default; }
+.admin-folder-cover {
+  width: 56px; height: 56px; border-radius: 12px; object-fit: cover; flex-shrink: 0;
+  background: var(--purple-tint); display: grid; place-items: center; font-size: 1.4rem;
+}
+.admin-folder-info { flex: 1 1 auto; }
+
+/* ---- Cover picker modal ---- */
+.cover-picker { max-width: 640px; width: min(92vw, 640px); }
+.cover-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: .6rem;
+  margin-top: 1rem; max-height: 55vh; overflow-y: auto;
+}
+.cover-tile {
+  margin: 0; padding: 0; border: 3px solid transparent; border-radius: 12px; overflow: hidden;
+  background: #e9e4f3; cursor: pointer; aspect-ratio: 1;
+}
+.cover-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cover-tile.selected { border-color: var(--purple); }
+.cover-tile:hover:not(:disabled) { border-color: var(--accent); }
+
+/* ---- Member's own pending uploads ---- */
+.pending-section { margin-bottom: 1.5rem; }
+.pending-section-title { font-size: .9rem; color: var(--purple); font-weight: 600; margin: 0 0 .6rem; }
+.pending-grid {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .9rem;
+}
+.pending-tile {
+  position: relative; border-radius: var(--radius); overflow: hidden;
+  border: 2px dashed var(--accent); background: #fff8ec; aspect-ratio: 1;
+}
+.pending-tile img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: .9; }
+.pending-badge {
+  position: absolute; left: .4rem; bottom: .4rem; right: .4rem;
+  background: rgba(58, 38, 0, .82); color: #ffe9c2; font-size: .72rem; font-weight: 600;
+  padding: .25rem .5rem; border-radius: 8px; text-align: center;
+}
+.pending-delete {
+  position: absolute; top: .4rem; right: .4rem; width: 30px; height: 30px; margin: 0; padding: 0;
+  border-radius: 50%; background: rgba(220, 38, 38, .92); color: #fff; border: none;
+  font-size: 1.1rem; line-height: 1; cursor: pointer; display: grid; place-items: center;
+}
+.pending-delete:hover:not(:disabled) { background: #b91c1c; }
+
+/* ---- Photo sort toggle ---- */
+.sort-toggle {
+  display: inline-flex; align-items: center; gap: .4rem; width: auto; margin: 0;
+  background: var(--purple-tint); color: var(--purple); border: 1px solid var(--purple-line);
+  border-radius: 999px; padding: .45rem .9rem; font-size: .85rem; cursor: pointer;
+}
+.sort-toggle:hover { background: var(--purple); color: #fff; }
+.gallery-toolbar { display: flex; justify-content: flex-end; margin-bottom: .2rem; }
+
+/* ---- Approval: sticky action bar ---- */
+.approval-bar {
+  position: sticky; top: .5rem; z-index: 5;
+  display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+  background: var(--purple); color: #fff; border-radius: 14px;
+  padding: .7rem 1rem; box-shadow: var(--shadow-md);
+}
+.approval-bar-count { font-weight: 600; }
+.approval-bar .btn-ghost-light {
+  background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.4);
+  border-radius: 999px; padding: .45rem .9rem; width: auto; margin: 0; cursor: pointer; font-size: .85rem;
+}
+.approval-bar .btn-ghost-light:hover { background: rgba(255,255,255,.28); }
+.approval-bar .spacer { margin-left: auto; }
+
+/* ---- Approval lightbox (near-black fullscreen review) ---- */
+.approval-lightbox {
+  position: fixed; inset: 0; z-index: 60; background: #0a0a0c;
+  display: flex; flex-direction: column; color: #fff;
+}
+.approval-lb-top {
+  display: flex; align-items: center; gap: 1rem; padding: .8rem 1.1rem;
+}
+.approval-lb-counter { font-weight: 600; opacity: .85; }
+.approval-lb-folder { color: #cbb8ff; font-weight: 600; }
+.approval-lb-close {
+  margin-left: auto; width: auto; background: rgba(255,255,255,.12); color: #fff;
+  border: none; border-radius: 999px; padding: .45rem 1rem; cursor: pointer;
+}
+.approval-lb-close:hover { background: rgba(255,255,255,.22); }
+.approval-lb-stage {
+  flex: 1; position: relative; display: grid; place-items: center; min-height: 0; padding: .5rem;
+}
+.approval-lb-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
+.approval-lb-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 52px; height: 52px; border-radius: 50%; margin: 0; padding: 0;
+  background: rgba(255,255,255,.12); color: #fff; border: none; cursor: pointer;
+  display: grid; place-items: center; font-size: 1.6rem;
+}
+.approval-lb-nav:hover:not(:disabled) { background: rgba(255,255,255,.24); }
+.approval-lb-nav:disabled { opacity: .3; cursor: default; }
+.approval-lb-prev { left: 1rem; }
+.approval-lb-next { right: 1rem; }
+.approval-lb-bottom {
+  padding: .9rem 1.1rem 1.4rem; display: flex; flex-direction: column; align-items: center; gap: .8rem;
+}
+.approval-lb-caption { margin: 0; color: #ddd; text-align: center; max-width: 60ch; }
+.approval-lb-actions { display: flex; gap: 1rem; }
+.approval-lb-actions .btn-approve, .approval-lb-actions .btn-reject {
+  padding: .7rem 1.6rem; font-size: 1rem; border-radius: 12px;
+}

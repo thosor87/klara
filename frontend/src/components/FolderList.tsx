@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type Folder } from "../api";
+import { formatDateRange } from "../dates";
 
 export function FolderList() {
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -27,21 +28,31 @@ export function FolderList() {
         <p className="muted empty-hint">Noch keine Ordner vorhanden.</p>
       ) : (
         <div className="folder-grid">
-          {folders.map((f, i) => (
+          {folders.map((f, i) => {
+            const range = formatDateRange(f.startDate, f.endDate);
+            return (
             <Link
               key={f.id}
               to={`/ordner/${f.id}`}
               className="folder-card"
               style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
             >
-              <span className="folder-icon" aria-hidden="true">🌿</span>
+              {f.coverThumbUrl ? (
+                <span className="folder-cover">
+                  <img src={f.coverThumbUrl} alt="" loading="lazy" draggable={false} />
+                </span>
+              ) : (
+                <span className="folder-icon" aria-hidden="true">🌿</span>
+              )}
               <div className="folder-name">{f.name}</div>
               {(f.schoolYear || f.classLabel) && (
                 <div className="folder-meta">{[f.schoolYear, f.classLabel].filter(Boolean).join(" · ")}</div>
               )}
+              {range && <div className="folder-meta">{range}</div>}
               <div className="folder-count">{f.itemCount} Foto{f.itemCount !== 1 ? "s" : ""}</div>
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>
