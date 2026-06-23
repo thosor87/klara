@@ -40,16 +40,45 @@ function FolderFormFields({
   form,
   setForm,
   classOptions,
+  ownClassId,
 }: {
   form: FormState;
   setForm: React.Dispatch<React.SetStateAction<FormState>>;
   classOptions: ClassOption[];
+  ownClassId?: string;
 }) {
   // Only active (and legacy) cohorts are assignable; alumni/archived/expired/future are hidden.
   // Keep any class already selected on the album, even if it has since aged out.
   const selectable = classOptions.filter(
     (c) => c.status === "active" || c.status === "legacy" || form.classIds.includes(c.id),
   );
+  // Primary = the teacher's own class + whatever is already selected; the rest sit
+  // behind an explicit "weitere Klassen berechtigen" toggle to keep the form tidy.
+  const isPrimary = (c: ClassOption) => form.classIds.includes(c.id) || c.id === ownClassId;
+  const primary = selectable.filter(isPrimary);
+  const others = selectable.filter((c) => !isPrimary(c));
+  const [showAll, setShowAll] = useState(primary.length === 0);
+
+  const renderChip = (c: ClassOption) => {
+    const active = form.classIds.includes(c.id);
+    return (
+      <button
+        key={c.id}
+        type="button"
+        className={`class-toggle${active ? " active" : ""}`}
+        aria-pressed={active}
+        onClick={() =>
+          setForm((p) => ({
+            ...p,
+            classIds: active ? p.classIds.filter((id) => id !== c.id) : [...p.classIds, c.id],
+          }))
+        }
+      >
+        {chipLabel(c)}
+      </button>
+    );
+  };
+
   return (
     <>
       <input
@@ -69,29 +98,21 @@ function FolderFormFields({
             Noch keine aktiven Klassen. Lege sie unter „Klassen verwalten“ an.
           </p>
         ) : (
-          <div className="class-toggle-row" role="group" aria-label="Klassen">
-            {selectable.map((c) => {
-              const active = form.classIds.includes(c.id);
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  className={`class-toggle${active ? " active" : ""}`}
-                  aria-pressed={active}
-                  onClick={() =>
-                    setForm((p) => ({
-                      ...p,
-                      classIds: active
-                        ? p.classIds.filter((id) => id !== c.id)
-                        : [...p.classIds, c.id],
-                    }))
-                  }
-                >
-                  {chipLabel(c)}
-                </button>
-              );
-            })}
-          </div>
+          <>
+            <div className="class-toggle-row" role="group" aria-label="Klassen">
+              {primary.map(renderChip)}
+              {showAll && others.map(renderChip)}
+            </div>
+            {others.length > 0 && !showAll && (
+              <button
+                type="button"
+                className="link-btn class-more-btn"
+                onClick={() => setShowAll(true)}
+              >
+                + Weitere Klassen berechtigen
+              </button>
+            )}
+          </>
         )}
         {form.classIds.length === 0 && selectable.length > 0 && (
           <p className="muted class-toggle-hint">Ohne Klasse sehen nur Admins dieses Album.</p>
@@ -435,7 +456,7 @@ export function AdminFolders() {
         <div className="card" style={{ maxWidth: "none", margin: "1rem 0" }}>
           <h3 style={{ margin: "0 0 .75rem", color: "#5b3fb0" }}>Neues Album anlegen</h3>
           <form onSubmit={handleCreate} className="admin-folder-edit-form">
-            <FolderFormFields form={createForm} setForm={setCreateForm} classOptions={classOptions} />
+            <FolderFormFields form={createForm} setForm={setCreateForm} classOptions={classOptions} ownClassId={me?.classId ?? undefined} />
             {createErr && <p className="err">{createErr}</p>}
             <div style={{ display: "flex", gap: ".75rem", marginTop: "1rem" }}>
               <button type="submit" style={{ width: "auto" }} disabled={createBusy || !createForm.name.trim()}>

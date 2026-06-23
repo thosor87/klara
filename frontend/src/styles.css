@@ -940,3 +940,6 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
 .gallery-check-btn:focus-visible { opacity: 1; }
 .gallery-check-btn:hover { background: #fff; }
 .gallery-check-btn.is-on { background: var(--purple); border-color: var(--purple); color: #fff; opacity: 1; }
+
+/* "Weitere Klassen berechtigen" expander in the album form */
+.class-more-btn { width: auto; margin: .5rem 0 0; padding: .3rem .1rem; font-weight: 500; }
