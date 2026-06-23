@@ -7,7 +7,7 @@ import { registerAuthRoutes } from "./routes.js";
 
 function fakeService(over: Partial<AuthService> = {}): AuthService {
   return {
-    requestLogin: async () => {},
+    requestLogin: async () => "denied",
     verifyCode: async () => null,
     verifyLink: async () => null,
     ...over,
@@ -26,12 +26,37 @@ async function makeApp(svc: AuthService, lookup: (id: string) => Promise<User | 
 }
 
 describe("POST /api/auth/request", () => {
-  it("antwortet generisch 200, egal ob berechtigt", async () => {
-    const app = await makeApp(fakeService(), async () => null);
+  it("gibt das Outcome des Service zurück (code_sent)", async () => {
+    const app = await makeApp(fakeService({ requestLogin: async () => "code_sent" }), async () => null);
+    const res = await app.inject({ method: "POST", url: "/api/auth/request",
+      payload: { email: "a@grundschule-xy.de" } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ outcome: "code_sent" });
+  });
+
+  it("gibt pending zurück", async () => {
+    const app = await makeApp(fakeService({ requestLogin: async () => "pending" }), async () => null);
+    const res = await app.inject({ method: "POST", url: "/api/auth/request",
+      payload: { email: "neu@grundschule-xy.de" } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ outcome: "pending" });
+  });
+
+  it("gibt denied zurück", async () => {
+    const app = await makeApp(fakeService({ requestLogin: async () => "denied" }), async () => null);
     const res = await app.inject({ method: "POST", url: "/api/auth/request",
       payload: { email: "x@gmail.com" } });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ ok: true });
+    expect(res.json()).toEqual({ outcome: "denied" });
+  });
+
+  it("ohne E-Mail im Body → denied, Service wird nicht aufgerufen", async () => {
+    let called = false;
+    const app = await makeApp(fakeService({ requestLogin: async () => { called = true; return "code_sent"; } }), async () => null);
+    const res = await app.inject({ method: "POST", url: "/api/auth/request", payload: {} });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ outcome: "denied" });
+    expect(called).toBe(false);
   });
 });
 

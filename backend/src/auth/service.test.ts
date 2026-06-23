@@ -75,10 +75,11 @@ describe("requestLogin", () => {
   let repo: FakeRepo; let mailer: FakeMailer;
   beforeEach(() => { repo = new FakeRepo(); mailer = new FakeMailer(); });
 
-  it("aktiver Nutzer bekommt Mail mit 6-stelligem Code und Link", async () => {
+  it("aktiver Nutzer bekommt Mail mit 6-stelligem Code und Link → code_sent", async () => {
     repo.users.push({ id: "u1", email: "a@grundschule-xy.de", role: "member",
       status: "active", createdAt: "x" });
-    await makeService(repo, mailer).requestLogin("  A@Grundschule-XY.de ");
+    const outcome = await makeService(repo, mailer).requestLogin("  A@Grundschule-XY.de ");
+    expect(outcome).toBe("code_sent");
     expect(mailer.sent).toHaveLength(1);
     expect(mailer.sent[0].to).toBe("a@grundschule-xy.de");
     expect(mailer.sent[0].code).toMatch(/^\d{6}$/);
@@ -86,16 +87,35 @@ describe("requestLogin", () => {
     expect(repo.tokens).toHaveLength(1);
   });
 
-  it("neuer Domain-Nutzer wird pending angelegt, KEINE Mail", async () => {
-    await makeService(repo, mailer).requestLogin("neu@grundschule-xy.de");
+  it("neuer Domain-Nutzer wird pending angelegt, KEINE Mail → pending", async () => {
+    const outcome = await makeService(repo, mailer).requestLogin("neu@grundschule-xy.de");
+    expect(outcome).toBe("pending");
     expect(repo.users).toHaveLength(1);
     expect(repo.users[0].status).toBe("pending");
     expect(mailer.sent).toHaveLength(0);
   });
 
-  it("fremde Domain: keine Mail, kein Nutzer", async () => {
-    await makeService(repo, mailer).requestLogin("x@gmail.com");
+  it("bereits pending angelegter Nutzer → pending, KEINE Mail, kein zweiter Nutzer", async () => {
+    repo.users.push({ id: "u1", email: "wartet@grundschule-xy.de", role: "member",
+      status: "pending", createdAt: "x" });
+    const outcome = await makeService(repo, mailer).requestLogin("wartet@grundschule-xy.de");
+    expect(outcome).toBe("pending");
+    expect(repo.users).toHaveLength(1);
+    expect(mailer.sent).toHaveLength(0);
+  });
+
+  it("fremde Domain: keine Mail, kein Nutzer → denied", async () => {
+    const outcome = await makeService(repo, mailer).requestLogin("x@gmail.com");
+    expect(outcome).toBe("denied");
     expect(repo.users).toHaveLength(0);
+    expect(mailer.sent).toHaveLength(0);
+  });
+
+  it("deaktivierter Nutzer → denied, KEINE Mail", async () => {
+    repo.users.push({ id: "u1", email: "weg@grundschule-xy.de", role: "member",
+      status: "disabled", createdAt: "x" });
+    const outcome = await makeService(repo, mailer).requestLogin("weg@grundschule-xy.de");
+    expect(outcome).toBe("denied");
     expect(mailer.sent).toHaveLength(0);
   });
 });

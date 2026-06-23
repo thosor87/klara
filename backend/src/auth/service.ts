@@ -13,8 +13,11 @@ export interface AuthServiceDeps {
   appBaseUrl: string;
 }
 
+/** Was dem Nutzer nach einem Login-Request zurückgemeldet wird. */
+export type RequestLoginOutcome = "code_sent" | "pending" | "denied";
+
 export interface AuthService {
-  requestLogin(rawEmail: string): Promise<void>;
+  requestLogin(rawEmail: string): Promise<RequestLoginOutcome>;
   verifyCode(rawEmail: string, code: string): Promise<User | null>;
   verifyLink(linkToken: string): Promise<User | null>;
 }
@@ -56,9 +59,16 @@ export function createAuthService(deps: AuthServiceDeps): AuthService {
       const { action } = decideLoginAction({
         email, allowedDomains, existingUser: existing ? { status: existing.status } : null,
       });
-      if (action === "send_login") await issueToken(email);
-      else if (action === "create_pending") await repo.createPendingUser(email);
-      // noop / deny: bewusst nichts (kein Leak, keine Mail)
+      if (action === "send_login") {
+        await issueToken(email);
+        return "code_sent";
+      }
+      if (action === "create_pending") {
+        await repo.createPendingUser(email);
+        return "pending";
+      }
+      if (action === "noop") return "pending"; // existierender pending-Nutzer, keine Mail
+      return "denied"; // deny: keine Mail, kein Nutzer
     },
 
     async verifyCode(rawEmail, code) {

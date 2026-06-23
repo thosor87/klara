@@ -24,8 +24,9 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRoutesDeps): 
 
   app.post<{ Body: { email?: string } }>("/api/auth/request", async (req, reply) => {
     const email = req.body?.email;
-    if (email) await service.requestLogin(email);
-    return reply.send({ ok: true }); // immer generisch, kein Enumeration-Leak
+    // Ohne E-Mail gibt es nichts zu prüfen → denied (Service gar nicht erst aufrufen).
+    const outcome = email ? await service.requestLogin(email) : "denied";
+    return reply.send({ outcome });
   });
 
   app.post<{ Body: { email?: string; code?: string } }>("/api/auth/verify", async (req, reply) => {
