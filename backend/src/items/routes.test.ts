@@ -125,6 +125,26 @@ describe("POST /api/folders/:folderId/uploads/presign", () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it("forwards kind=video to the service", async () => {
+    let capturedKind: string | undefined;
+    const service = fakeService({
+      presignUpload: async (_f, _ct, _u, kind) => {
+        capturedKind = kind;
+        return { itemId: "i1", webUploadUrl: "url-w", thumbUploadUrl: "url-t" };
+      },
+    });
+    const app = await makeApp(service, MEMBER);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/folders/f1/uploads/presign",
+      payload: { contentType: "video/mp4", kind: "video" },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(capturedKind).toBe("video");
+  });
+
   it("folder_not_found AppError → 404", async () => {
     const service = fakeService({
       presignUpload: async () => {
@@ -208,6 +228,27 @@ describe("POST /api/folders/:folderId/items", () => {
 
     expect(res.statusCode).toBe(409);
     expect(res.json()).toEqual({ error: "already_confirmed" });
+  });
+
+  it("forwards kind=video and maps video_too_large → 413", async () => {
+    let capturedKind: string | undefined;
+    const service = fakeService({
+      confirmUpload: async (_f, _id, _c, _u, _user, kind) => {
+        capturedKind = kind;
+        throw new AppError("video_too_large", "Video exceeds the maximum allowed size");
+      },
+    });
+    const app = await makeApp(service, MEMBER);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/folders/f1/items",
+      payload: { itemId: "item1", kind: "video" },
+    });
+
+    expect(res.statusCode).toBe(413);
+    expect(res.json()).toEqual({ error: "video_too_large" });
+    expect(capturedKind).toBe("video");
   });
 });
 

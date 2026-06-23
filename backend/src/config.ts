@@ -37,6 +37,8 @@ export const config = {
   },
   cronSecret: process.env.CRON_SECRET ?? "",
   trashRetentionDays: Number(process.env.TRASH_RETENTION_DAYS ?? 30),
+  // Hard server-side cap on uploaded video size (default 150 MB). Enforced in confirmUpload.
+  maxVideoBytes: Number(process.env.MAX_VIDEO_BYTES ?? 157_286_400),
 };
 
 export { required };

@@ -130,6 +130,7 @@ function fakeStorage(over: Partial<Storage> = {}): Storage {
     presignPut: async (key) => `https://s3.example.com/put/${key}`,
     presignGet: async (key) => `https://s3.example.com/get/${key}`,
     headExists: async () => true,
+    head: async () => ({ size: 0 }),
     deleteObjects: async () => {},
     ...over,
   };

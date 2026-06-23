@@ -12,21 +12,23 @@ export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): 
   const { itemsService, requireUser, requireAdmin } = deps;
 
   // POST /api/folders/:folderId/uploads/presign — generate presigned PUT URLs
-  app.post<{ Params: { folderId: string }; Body: { contentType?: string } }>(
+  app.post<{ Params: { folderId: string }; Body: { contentType?: string; kind?: "photo" | "video" } }>(
     "/api/folders/:folderId/uploads/presign",
     { preHandler: requireUser },
     async (req, reply) => {
-      const { contentType } = req.body ?? {};
+      const { contentType, kind } = req.body ?? {};
 
       if (!contentType) {
         return reply.code(400).send({ error: "contentType is required" });
       }
 
       try {
-        const result = await itemsService.presignUpload(req.params.folderId, contentType, {
-          isAdmin: req.user!.role === "admin",
-          classId: req.user!.classId,
-        });
+        const result = await itemsService.presignUpload(
+          req.params.folderId,
+          contentType,
+          { isAdmin: req.user!.role === "admin", classId: req.user!.classId },
+          kind === "video" ? "video" : "photo",
+        );
         return reply.code(200).send(result);
       } catch (err) {
         if (err instanceof AppError && err.code === "folder_not_found") {
@@ -38,11 +40,11 @@ export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): 
   );
 
   // POST /api/folders/:folderId/items — confirm upload and create item record
-  app.post<{ Params: { folderId: string }; Body: { itemId?: string; caption?: string } }>(
+  app.post<{ Params: { folderId: string }; Body: { itemId?: string; caption?: string; kind?: "photo" | "video" } }>(
     "/api/folders/:folderId/items",
     { preHandler: requireUser },
     async (req, reply) => {
-      const { itemId, caption } = req.body ?? {};
+      const { itemId, caption, kind } = req.body ?? {};
 
       if (!itemId) {
         return reply.code(400).send({ error: "itemId is required" });
@@ -55,6 +57,7 @@ export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): 
           caption ?? "",
           req.user!.id,
           { isAdmin: req.user!.role === "admin", classId: req.user!.classId },
+          kind === "video" ? "video" : "photo",
         );
         return reply.code(201).send(item);
       } catch (err) {
@@ -63,6 +66,9 @@ export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): 
         }
         if (err instanceof AppError && err.code === "already_confirmed") {
           return reply.code(409).send({ error: "already_confirmed" });
+        }
+        if (err instanceof AppError && err.code === "video_too_large") {
+          return reply.code(413).send({ error: "video_too_large" });
         }
         throw err;
       }

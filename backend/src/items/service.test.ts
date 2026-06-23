@@ -51,6 +51,7 @@ function fakeStorage(overrides: Partial<Storage> = {}): Storage {
     presignPut: async (key) => `https://s3.example.com/put/${key}`,
     presignGet: async (key) => `https://s3.example.com/get/${key}`,
     headExists: async () => true,
+    head: async () => ({ size: 0 }),
     deleteObjects: async () => {},
     ...overrides,
   };
@@ -112,6 +113,23 @@ describe("presignUpload", () => {
     expect(result.webUploadUrl).toContain("https://s3.example.com/put/items/");
     expect(result.webUploadUrl).toContain("/web.jpg");
     expect(result.thumbUploadUrl).toContain("https://s3.example.com/put/items/");
+    expect(result.thumbUploadUrl).toContain("/thumb.jpg");
+  });
+
+  it("video kind → web key is /source with the given content type", async () => {
+    const presignPut = vi.fn(async (key: string) => `https://s3.example.com/put/${key}`);
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo(),
+      foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER }),
+      storage: fakeStorage({ presignPut }),
+    });
+
+    const result = await svc.presignUpload("f1", "video/mp4", MEMBER_USER, "video");
+
+    expect(result.webUploadUrl).toContain("/source");
+    expect(result.webUploadUrl).not.toContain("/web.jpg");
+    expect(presignPut).toHaveBeenCalledWith(expect.stringContaining("/source"), "video/mp4");
+    // thumb stays a jpeg
     expect(result.thumbUploadUrl).toContain("/thumb.jpg");
   });
 
@@ -265,6 +283,40 @@ describe("confirmUpload", () => {
       name: "AppError",
       code: "already_confirmed",
     });
+  });
+
+  it("video under the size limit → inserts item with type video and source key", async () => {
+    const insertPending = vi.fn(async () => ({ ...ITEM, type: "video" as const }));
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo({ insertPending }),
+      foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER }),
+      storage: fakeStorage({ head: async () => ({ size: 1_000_000 }) }),
+      maxVideoBytes: 150_000_000,
+    });
+
+    await svc.confirmUpload("f1", "item1", "", "u1", MEMBER_USER, "video");
+
+    expect(insertPending).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "video", s3Key: "items/item1/source", thumbKey: "items/item1/thumb.jpg" }),
+    );
+  });
+
+  it("video over the size limit → video_too_large, deletes both objects, no insert", async () => {
+    const insertPending = vi.fn(async () => ITEM);
+    const deleteObjects = vi.fn(async () => {});
+    const svc = createItemsService({
+      itemsRepo: fakeItemsRepo({ insertPending }),
+      foldersRepo: fakeFoldersRepo({ findById: async () => FOLDER }),
+      storage: fakeStorage({ head: async () => ({ size: 200_000_000 }), deleteObjects }),
+      maxVideoBytes: 150_000_000,
+    });
+
+    await expect(svc.confirmUpload("f1", "item1", "", "u1", MEMBER_USER, "video")).rejects.toMatchObject({
+      name: "AppError",
+      code: "video_too_large",
+    });
+    expect(deleteObjects).toHaveBeenCalledWith(["items/item1/source", "items/item1/thumb.jpg"]);
+    expect(insertPending).not.toHaveBeenCalled();
   });
 });
 

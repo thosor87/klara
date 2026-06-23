@@ -12,6 +12,8 @@ export interface Storage {
   presignPut(key: string, contentType: string): Promise<string>;
   presignGet(key: string): Promise<string>;
   headExists(key: string): Promise<boolean>;
+  /** Object size in bytes (null if it doesn't exist). Used to enforce the video size limit. */
+  head(key: string): Promise<{ size: number } | null>;
   deleteObjects(keys: string[]): Promise<void>;
 }
 
@@ -34,6 +36,12 @@ export function createS3Storage(): Storage {
     async headExists(key) {
       try { await client.send(new HeadObjectCommand({ Bucket, Key: key })); return true; }
       catch { return false; }
+    },
+    async head(key) {
+      try {
+        const out = await client.send(new HeadObjectCommand({ Bucket, Key: key }));
+        return { size: out.ContentLength ?? 0 };
+      } catch { return null; }
     },
     async deleteObjects(keys) {
       if (!keys.length) return;

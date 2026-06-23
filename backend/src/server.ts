@@ -99,7 +99,7 @@ export async function defaultRuntime(): Promise<BuildOptions> {
   const storage = createS3Storage();
   const foldersRepo = createPostgresFoldersRepo(sql);
   const itemsRepo = createPostgresItemsRepo(sql);
-  const itemsService = createItemsService({ itemsRepo, foldersRepo, storage });
+  const itemsService = createItemsService({ itemsRepo, foldersRepo, storage, maxVideoBytes: config.maxVideoBytes });
   const reportsRepo = createPostgresReportsRepo(sql);
   const reportsService = createReportsService({ reportsRepo, itemsRepo, storage });
   const graduationRepo = createPostgresGraduationRepo(sql);

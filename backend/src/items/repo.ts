@@ -36,6 +36,7 @@ export interface ItemsRepo {
     thumbKey: string;
     caption: string;
     uploadedBy: string;
+    type?: "photo" | "video";
   }): Promise<Item | null>;
   listByFolder(folderId: string, statuses: ItemStatus[]): Promise<Item[]>;
   /** Returns approved + the requesting user's own pending items in a folder. */
@@ -85,8 +86,8 @@ export function createPostgresItemsRepo(sql: SqlTag): ItemsRepo {
   return {
     async insertPending(data) {
       const rows = await sql<Record<string, unknown>[]>`
-        INSERT INTO items (id, folder_id, s3_key, thumb_key, caption, uploaded_by)
-        VALUES (${data.id}, ${data.folderId}, ${data.s3Key}, ${data.thumbKey}, ${data.caption}, ${data.uploadedBy})
+        INSERT INTO items (id, folder_id, s3_key, thumb_key, caption, uploaded_by, type)
+        VALUES (${data.id}, ${data.folderId}, ${data.s3Key}, ${data.thumbKey}, ${data.caption}, ${data.uploadedBy}, ${data.type ?? "photo"})
         ON CONFLICT (id) DO NOTHING
         RETURNING *`;
       return rows.length ? mapItem(rows[0]) : null;
