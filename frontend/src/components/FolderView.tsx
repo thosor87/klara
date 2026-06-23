@@ -6,6 +6,7 @@ import { Gallery } from "./Gallery";
 import { Lightbox } from "./Lightbox";
 import { ShareDialog } from "./ShareDialog";
 import { useConfirm } from "./ConfirmDialog";
+import { buildFilename, downloadImagesAsZip, slugify } from "../download";
 
 type SortOrder = "newest" | "oldest";
 
@@ -28,6 +29,10 @@ export function FolderView() {
   const [showShare, setShowShare] = useState(false);
   const [sort, setSort] = useState<SortOrder>("newest");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Multi-select + bulk ZIP download in the gallery
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [zip, setZip] = useState<{ done: number; total: number } | null>(null);
   const [deleteErr, setDeleteErr] = useState("");
   const { ask, dialog } = useConfirm();
 
@@ -112,6 +117,31 @@ export function FolderView() {
     ? [folder.schoolYear, folder.classLabel].filter(Boolean).join(" · ")
     : "";
 
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  const allSelected = approved.length > 0 && selected.size === approved.length;
+  function exitSelect() {
+    setSelectMode(false);
+    setSelected(new Set());
+  }
+  async function downloadSelected() {
+    if (zip || selected.size === 0) return;
+    const chosen = approved.filter((i) => selected.has(i.id));
+    const images = chosen.map((i) => ({ url: i.webUrl, filename: buildFilename(i.caption, i.createdAt) }));
+    setZip({ done: 0, total: images.length });
+    try {
+      await downloadImagesAsZip(images, `klara-${slugify(title)}.zip`, (done, total) => setZip({ done, total }));
+      exitSelect();
+    } finally {
+      setZip(null);
+    }
+  }
+
   return (
     <div className="folder-view">
       {dialog}
@@ -173,8 +203,42 @@ export function FolderView() {
             >
               {sort === "newest" ? "Neueste zuerst ↓" : "Älteste zuerst ↑"}
             </button>
+            {!selectMode ? (
+              <button className="btn-secondary btn-inline" onClick={() => setSelectMode(true)}>Auswählen</button>
+            ) : (
+              <button className="btn-secondary btn-inline" onClick={exitSelect}>Fertig</button>
+            )}
           </div>
-          <Gallery items={approved} onOpen={openLightbox} label={`Fotos in ${title}`} />
+
+          {selectMode && (
+            <div className="select-bar" role="region" aria-label="Fotoauswahl">
+              <span className="select-count">{selected.size} ausgewählt</span>
+              <button
+                type="button"
+                className="link-btn select-all"
+                onClick={() => setSelected(allSelected ? new Set() : new Set(approved.map((i) => i.id)))}
+              >
+                {allSelected ? "Alle abwählen" : "Alle auswählen"}
+              </button>
+              <button
+                type="button"
+                className="btn-inline"
+                onClick={downloadSelected}
+                disabled={selected.size === 0 || !!zip}
+              >
+                {zip ? `Lädt … (${zip.done}/${zip.total})` : `Herunterladen (${selected.size})`}
+              </button>
+            </div>
+          )}
+
+          <Gallery
+            items={approved}
+            onOpen={openLightbox}
+            label={`Fotos in ${title}`}
+            selectable={selectMode}
+            selected={selected}
+            onToggleSelect={toggleSelect}
+          />
         </>
       )}
 

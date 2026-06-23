@@ -887,3 +887,24 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
   font-family: ui-monospace, monospace; font-size: .9em; color: #475569;
 }
 .legal-page-wrap { padding: 2rem clamp(1rem, 4vw, 2rem) 1rem; max-width: 760px; margin: 0 auto; width: 100%; }
+
+/* ---- Gallery multi-select + bulk ZIP download ---- */
+.gallery-toolbar { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.select-bar {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  margin: 0 0 1rem; padding: .7rem 1rem;
+  background: var(--paper-card, #fff); border: 1px solid var(--purple-line);
+  border-radius: 14px; box-shadow: var(--shadow-sm);
+  position: sticky; top: .5rem; z-index: 5;
+}
+.select-count { font-weight: 600; color: var(--ink); }
+.select-all { width: auto; margin: 0; }
+.gallery-tile--selected .gallery-tile-btn { outline: 3px solid var(--purple); outline-offset: -3px; }
+.gallery-tile--selected .gallery-img { filter: brightness(.9); }
+.gallery-check {
+  position: absolute; top: 8px; right: 8px; width: 26px; height: 26px;
+  border-radius: 50%; display: grid; place-items: center;
+  background: rgba(255,255,255,.85); border: 2px solid var(--purple);
+  color: var(--purple); font-weight: 700; font-size: .9rem; line-height: 1;
+}
+.gallery-check.is-on { background: var(--purple); color: #fff; }
