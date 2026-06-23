@@ -7,12 +7,27 @@ import { Trash } from "./Trash";
 type FormState = {
   name: string;
   schoolYear: string;
-  classLabel: string;
   startDate: string;
   endDate: string;
+  classIds: string[];
 };
 
-const emptyForm: FormState = { name: "", schoolYear: "", classLabel: "", startDate: "", endDate: "" };
+const emptyForm: FormState = { name: "", schoolYear: "", startDate: "", endDate: "", classIds: [] };
+
+/** Small chips showing the classes an album is assigned to (labels via class-options). */
+function ClassChips({ classIds, classOptions }: { classIds: string[]; classOptions: ClassOption[] }) {
+  if (!classIds.length) {
+    return <span className="class-chip class-chip--none">Ohne Klasse · nur Admins</span>;
+  }
+  const labels = classIds.map((id) => classOptions.find((c) => c.id === id)?.label ?? "?");
+  return (
+    <span className="class-chips">
+      {labels.map((label, i) => (
+        <span key={classIds[i]} className="class-chip">{label}</span>
+      ))}
+    </span>
+  );
+}
 
 /** Shared fields used by both the create form and the inline edit form. */
 function FolderFormFields({
@@ -46,21 +61,44 @@ function FolderFormFields({
           ))}
         </select>
       </label>
-      <label className="form-field">
+      <div className="form-field">
         <span className="form-label">
-          Klasse
+          Für welche Klassen?
           <Link to="/verwaltung/klassen" className="form-label-link">Klassen verwalten</Link>
         </span>
-        <select
-          value={form.classLabel}
-          onChange={(e) => setForm((p) => ({ ...p, classLabel: e.target.value }))}
-        >
-          <option value="">— keine Klasse —</option>
-          {classOptions.map((c) => (
-            <option key={c.id} value={c.label}>{c.label}</option>
-          ))}
-        </select>
-      </label>
+        {classOptions.length === 0 ? (
+          <p className="muted" style={{ margin: ".2rem 0 0", fontSize: ".85rem" }}>
+            Noch keine Klassen angelegt. Lege sie unter „Klassen verwalten“ an.
+          </p>
+        ) : (
+          <div className="class-toggle-row" role="group" aria-label="Klassen">
+            {classOptions.map((c) => {
+              const active = form.classIds.includes(c.id);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={`class-toggle${active ? " active" : ""}`}
+                  aria-pressed={active}
+                  onClick={() =>
+                    setForm((p) => ({
+                      ...p,
+                      classIds: active
+                        ? p.classIds.filter((id) => id !== c.id)
+                        : [...p.classIds, c.id],
+                    }))
+                  }
+                >
+                  {c.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {form.classIds.length === 0 && classOptions.length > 0 && (
+          <p className="muted class-toggle-hint">Ohne Klasse sehen nur Admins dieses Album.</p>
+        )}
+      </div>
       <div className="form-row">
         <label className="form-field">
           <span className="form-label">Von</span>
@@ -105,9 +143,9 @@ function FolderRow({
   const [form, setForm] = useState<FormState>({
     name: folder.name,
     schoolYear: folder.schoolYear ?? "",
-    classLabel: folder.classLabel ?? "",
     startDate: folder.startDate ?? "",
     endDate: folder.endDate ?? "",
+    classIds: folder.classIds ?? [],
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -121,9 +159,9 @@ function FolderRow({
       const updated = await api.updateFolder(folder.id, {
         name: form.name.trim(),
         schoolYear: form.schoolYear || undefined,
-        classLabel: form.classLabel || undefined,
         startDate: form.startDate || null,
         endDate: form.endDate || null,
+        classIds: form.classIds,
       });
       onUpdated(updated);
       setEditing(false);
@@ -192,11 +230,10 @@ function FolderRow({
       )}
       <div className="admin-folder-info">
         <span className="admin-folder-name">{folder.name}</span>
-        {(folder.schoolYear || folder.classLabel) && (
-          <span className="muted admin-folder-meta">
-            {[folder.schoolYear, folder.classLabel].filter(Boolean).join(" · ")}
-          </span>
+        {folder.schoolYear && (
+          <span className="muted admin-folder-meta">{folder.schoolYear}</span>
         )}
+        <ClassChips classIds={folder.classIds ?? []} classOptions={classOptions} />
         {range && <span className="muted admin-folder-meta">{range}</span>}
         <span className={`admin-folder-status ${folder.enabled ? "status-active" : "status-disabled"}`}>
           {folder.enabled ? "Aktiv" : "Deaktiviert"}
@@ -364,9 +401,9 @@ export function AdminFolders() {
       await api.createFolder({
         name: createForm.name.trim(),
         schoolYear: createForm.schoolYear || undefined,
-        classLabel: createForm.classLabel || undefined,
         startDate: createForm.startDate || null,
         endDate: createForm.endDate || null,
+        classIds: createForm.classIds,
       });
       await reload();
       setCreateForm(emptyForm);

@@ -779,6 +779,34 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
   background: var(--purple-tint); border-radius: 999px; padding: .15rem .6rem;
 }
 
+/* ---- Class assignment: toggle chips + display chips ---- */
+.class-toggle-row {
+  display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .4rem;
+}
+.class-toggle {
+  width: auto; margin: 0; padding: .35rem .8rem; font-size: .85rem; font-weight: 600;
+  border-radius: 999px; cursor: pointer; line-height: 1.2;
+  background: #fff; color: var(--purple-deep);
+  border: 1px solid var(--purple-line);
+}
+.class-toggle:hover:not(:disabled) { background: var(--purple-tint); }
+.class-toggle.active {
+  background: var(--purple); color: #fff; border-color: var(--purple);
+}
+.class-toggle.active:hover:not(:disabled) { background: var(--purple-deep); }
+.class-toggle-hint { margin: .4rem 0 0; font-size: .82rem; }
+
+.class-chips { display: inline-flex; flex-wrap: wrap; gap: .3rem; }
+.class-chip {
+  display: inline-flex; align-items: center; border-radius: 999px;
+  padding: .1rem .55rem; font-size: .78rem; font-weight: 600;
+  background: var(--purple-tint); color: var(--purple-deep);
+}
+.class-chip--none {
+  background: #f3f4f6; color: #6b7280; font-weight: 500; font-style: italic;
+}
+.folder-class-chips { justify-content: center; margin: .15rem 0; }
+
 /* ---- Settings: domains + classes management ---- */
 .settings-page { display: flex; flex-direction: column; gap: 1.5rem; }
 .settings-card {
