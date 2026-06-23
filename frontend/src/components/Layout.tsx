@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import { api, type Me } from "../api";
 import { TopBar } from "./TopBar";
 import { NavBar } from "./NavBar";
+import { Footer } from "./Footer";
 
 export function Layout({ me, onLogout }: { me: Me; onLogout: () => void }) {
   const [badgeCount, setBadgeCount] = useState(0);
@@ -34,6 +35,7 @@ export function Layout({ me, onLogout }: { me: Me; onLogout: () => void }) {
       <main className="app-content">
         <Outlet context={{ refreshPending: refreshBadge }} />
       </main>
+      <Footer />
     </div>
   );
 }
