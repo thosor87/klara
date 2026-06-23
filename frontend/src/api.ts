@@ -38,6 +38,7 @@ export interface ClassOption {
 export interface Item {
   id: string;
   type?: "photo" | "video";
+  processing?: boolean;
   caption: string;
   status: string;
   createdAt: string;

@@ -48,7 +48,10 @@ export function Gallery({
                 decoding="async"
                 draggable={false}
               />
-              {item.type === "video" && <span className="video-badge" aria-hidden="true" />}
+              {item.type === "video" && item.processing && (
+                <span className="processing-overlay" aria-hidden="true">⏳ wird verarbeitet</span>
+              )}
+              {item.type === "video" && !item.processing && <span className="video-badge" aria-hidden="true" />}
               {item.caption && (
                 <span className="gallery-caption" aria-hidden="true">{item.caption}</span>
               )}

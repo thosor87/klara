@@ -255,7 +255,13 @@ export function Lightbox({
 
       {/* Stage */}
       <div className="lightbox-stage" onClick={onClose}>
-        {item.type === "video" ? (
+        {item.type === "video" && item.processing ? (
+          <div className="lightbox-processing" onClick={(e) => e.stopPropagation()}>
+            <span className="processing-spinner" aria-hidden="true">⏳</span>
+            <p>Video wird noch verarbeitet …</p>
+            <p className="lightbox-processing-hint">Gleich abspielbar — die Seite lädt sich automatisch neu.</p>
+          </div>
+        ) : item.type === "video" ? (
           <video
             key={fadeKey}
             className="lightbox-img lightbox-video"

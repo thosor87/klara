@@ -55,6 +55,15 @@ export function FolderView() {
 
   useEffect(() => { loadItems(); }, [folderId]);
 
+  // While one of my videos is still transcoding, refresh silently every 10s.
+  useEffect(() => {
+    if (!items.some((i) => i.processing)) return;
+    const id = setInterval(() => {
+      api.getFolderItems(folderId).then(setItems).catch(() => {});
+    }, 10_000);
+    return () => clearInterval(id);
+  }, [items, folderId]);
+
   // Split approved (shown in the gallery + lightbox) from the member's own
   // pending uploads (shown separately, with a delete button).
   const approved = useMemo(() => {
@@ -196,7 +205,11 @@ export function FolderView() {
           <ul className="pending-grid">
             {myPending.map((item) => (
               <li key={item.id} className="pending-tile">
-                <img src={item.thumbUrl} alt={item.caption || "Foto"} loading="lazy" />
+                <img src={item.thumbUrl} alt={item.caption || (item.type === "video" ? "Video" : "Foto")} loading="lazy" />
+                {item.type === "video" && item.processing && (
+                  <span className="processing-overlay" aria-hidden="true">⏳ wird verarbeitet</span>
+                )}
+                {item.type === "video" && !item.processing && <span className="video-badge" aria-hidden="true" />}
                 <span className="pending-badge">wartet auf Freigabe</span>
                 <button
                   className="pending-delete"

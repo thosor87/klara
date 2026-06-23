@@ -30,6 +30,16 @@ export function ApprovalQueue() {
 
   useEffect(() => { load(); }, []);
 
+  // While any video is still transcoding (Phase B), refresh silently every 10s so
+  // it flips from "wird verarbeitet" to ready without a manual reload.
+  useEffect(() => {
+    if (!items.some((i) => i.processing)) return;
+    const id = setInterval(() => {
+      api.getPending().then((its) => { setItems(its); refreshPending(); }).catch(() => {});
+    }, 10_000);
+    return () => clearInterval(id);
+  }, [items, refreshPending]);
+
   function toggleItem(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -147,7 +157,10 @@ export function ApprovalQueue() {
                 aria-label="Foto in Vollbild prüfen"
               >
                 <img src={item.thumbUrl} alt={item.caption || (item.type === "video" ? "Video" : "Foto")} loading="lazy" className="approval-thumb" />
-                {item.type === "video" && <span className="video-badge" aria-hidden="true" />}
+                {item.type === "video" && item.processing && (
+                  <span className="processing-overlay" aria-hidden="true">⏳ wird verarbeitet</span>
+                )}
+                {item.type === "video" && !item.processing && <span className="video-badge" aria-hidden="true" />}
               </button>
               <input type="checkbox" className="approval-checkbox"
                 checked={selected.has(item.id)}

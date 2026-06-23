@@ -87,7 +87,13 @@ export function ApprovalLightbox({
       </div>
 
       <div className="approval-lb-stage">
-        {item.type === "video" ? (
+        {item.type === "video" && item.processing ? (
+          <div className="lightbox-processing">
+            <span className="processing-spinner" aria-hidden="true">⏳</span>
+            <p>Video wird noch verarbeitet …</p>
+            <p className="lightbox-processing-hint">Freigabe möglich, sobald es fertig ist.</p>
+          </div>
+        ) : item.type === "video" ? (
           <video
             className="approval-lb-img approval-lb-video"
             src={item.webUrl}
@@ -112,8 +118,13 @@ export function ApprovalLightbox({
           <button className="btn-reject" onClick={() => onReject(item.id)} disabled={busy}>
             Ablehnen
           </button>
-          <button className="btn-approve" onClick={() => onApprove(item.id)} disabled={busy}>
-            Freigeben
+          <button
+            className="btn-approve"
+            onClick={() => onApprove(item.id)}
+            disabled={busy || item.processing}
+            title={item.processing ? "Video wird noch verarbeitet" : undefined}
+          >
+            {item.processing ? "Wird verarbeitet …" : "Freigeben"}
           </button>
         </div>
       </div>
