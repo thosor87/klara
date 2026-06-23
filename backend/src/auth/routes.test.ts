@@ -14,7 +14,7 @@ function fakeService(over: Partial<AuthService> = {}): AuthService {
   };
 }
 const ACTIVE: User = { id: "u1", email: "a@grundschule-xy.de", role: "admin",
-  status: "active", createdAt: "x" };
+  status: "active", classId: null, createdAt: "x" };
 
 async function makeApp(svc: AuthService, lookup: (id: string) => Promise<User | null>) {
   const app = Fastify();

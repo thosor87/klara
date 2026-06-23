@@ -22,7 +22,10 @@ export interface AuthRepo {
   incrementCodeAttempts(id: string): Promise<void>;
   listUsers(): Promise<User[]>;
   upsertActiveUser(email: string, role: UserRole): Promise<User>;
-  updateUser(id: string, data: { status?: UserStatus; role?: UserRole }): Promise<User | null>;
+  updateUser(
+    id: string,
+    data: { status?: UserStatus; role?: UserRole; classId?: string | null },
+  ): Promise<User | null>;
   listAdminEmails(): Promise<string[]>;
 }
 
@@ -38,6 +41,7 @@ function mapUser(r: Record<string, unknown>): User {
     email: r.email as string,
     role: r.role as User["role"],
     status: r.status as User["status"],
+    classId: (r.class_id as string | null) ?? null,
     createdAt: r.created_at as string,
   };
 }
@@ -129,6 +133,10 @@ export function createPostgresAuthRepo(sql: SqlTag): AuthRepo {
       const updates: Record<string, unknown> = {};
       if (data.status !== undefined) updates.status = data.status;
       if (data.role !== undefined) updates.role = data.role;
+      // classId may be set to null explicitly (remove class assignment), so a
+      // plain `!== undefined` check is what distinguishes "not provided" from
+      // "set to null".
+      if (data.classId !== undefined) updates.class_id = data.classId;
 
       // Route guards ensure updates is never empty; branch kept for interface correctness.
       if (Object.keys(updates).length === 0) {

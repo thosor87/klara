@@ -18,6 +18,7 @@ const ADMIN: User = {
   email: "admin@grundschule.de",
   role: "admin",
   status: "active",
+  classId: null,
   createdAt: "2024-01-01",
 };
 
@@ -87,14 +88,14 @@ function fakeAuthRepo(overrides: Partial<AuthRepo> = {}): AuthRepo {
   return {
     findUserByEmail: async () => null,
     findUserById: async () => null,
-    createPendingUser: async (email) => ({ id: "u1", email, role: "member", status: "pending", createdAt: "x" }),
+    createPendingUser: async (email) => ({ id: "u1", email, role: "member", status: "pending", classId: null, createdAt: "x" }),
     insertLoginToken: async () => {},
     findLatestActiveToken: async () => null,
     findActiveTokenByLinkHash: async () => null,
     markTokenUsed: async () => {},
     incrementCodeAttempts: async () => {},
     listUsers: async () => [],
-    upsertActiveUser: async (email, role) => ({ id: "u1", email, role, status: "active", createdAt: "x" }),
+    upsertActiveUser: async (email, role) => ({ id: "u1", email, role, status: "active", classId: null, createdAt: "x" }),
     updateUser: async () => null,
     listAdminEmails: async () => [],
     ...overrides,

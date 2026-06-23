@@ -15,6 +15,7 @@ const MEMBER: User = {
   email: "member@grundschule.de",
   role: "member",
   status: "active",
+  classId: null,
   createdAt: "2024-01-01",
 };
 
@@ -23,6 +24,7 @@ const ADMIN: User = {
   email: "admin@grundschule.de",
   role: "admin",
   status: "active",
+  classId: null,
   createdAt: "2024-01-01",
 };
 

@@ -6,6 +6,7 @@ export interface User {
   email: string;
   role: UserRole;
   status: UserStatus;
+  classId: string | null;
   createdAt: string;
 }
 

@@ -15,6 +15,7 @@ const ADMIN: User = {
   email: "admin@grundschule.de",
   role: "admin",
   status: "active",
+  classId: null,
   createdAt: "2024-01-01",
 };
 
@@ -23,6 +24,7 @@ const MEMBER: User = {
   email: "member@grundschule.de",
   role: "member",
   status: "active",
+  classId: null,
   createdAt: "2024-01-01",
 };
 
@@ -39,6 +41,7 @@ function fakeAuthRepo(over: Partial<AuthRepo> = {}): AuthRepo {
       email,
       role: "member",
       status: "pending",
+      classId: null,
       createdAt: "x",
     }),
     insertLoginToken: async () => {},
@@ -52,6 +55,7 @@ function fakeAuthRepo(over: Partial<AuthRepo> = {}): AuthRepo {
       email,
       role,
       status: "active",
+      classId: null,
       createdAt: "x",
     }),
     updateUser: async () => null,
@@ -146,6 +150,7 @@ describe("POST /api/admin/users", () => {
         email,
         role,
         status: "active",
+        classId: null,
         createdAt: "x",
       }),
     });
@@ -192,7 +197,7 @@ describe("POST /api/admin/users", () => {
     const repo = fakeAuthRepo({
       upsertActiveUser: async (email, role) => {
         capturedRole = role;
-        return { id: "u-new", email, role, status: "active", createdAt: "x" };
+        return { id: "u-new", email, role, status: "active", classId: null, createdAt: "x" };
       },
     });
     const app = await makeApp(repo, ADMIN);
@@ -278,6 +283,48 @@ describe("PATCH /api/admin/users/:id", () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.json()).toEqual({ error: "cannot_modify_self" });
+  });
+
+  it("admin assigns classId → 200 + updateUser called with classId", async () => {
+    let captured: { status?: string; role?: string; classId?: string | null } | undefined;
+    const repo = fakeAuthRepo({
+      updateUser: async (_id, data) => {
+        captured = data;
+        return { ...MEMBER, classId: "class-a" };
+      },
+    });
+    const app = await makeApp(repo, ADMIN);
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/admin/users/${MEMBER.id}`,
+      payload: { classId: "class-a" },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(captured).toMatchObject({ classId: "class-a" });
+    expect((res.json() as User).classId).toBe("class-a");
+  });
+
+  it("admin clears classId (null) → 200 + updateUser called with classId=null", async () => {
+    let captured: { classId?: string | null } | undefined;
+    const repo = fakeAuthRepo({
+      updateUser: async (_id, data) => {
+        captured = data;
+        return { ...MEMBER, classId: null };
+      },
+    });
+    const app = await makeApp(repo, ADMIN);
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/admin/users/${MEMBER.id}`,
+      payload: { classId: null },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(captured).toHaveProperty("classId", null);
+    expect((res.json() as User).classId).toBeNull();
   });
 
   it("admin can patch own id with role='admin' (no-op) → 200", async () => {

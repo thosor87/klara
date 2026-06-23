@@ -30,17 +30,22 @@ export function registerAdminUserRoutes(app: FastifyInstance, deps: AdminUserRou
   );
 
   // POST /api/admin/users — create or activate a user (admin only)
-  app.post<{ Body: { email?: string; role?: UserRole } }>(
+  app.post<{ Body: { email?: string; role?: UserRole; classId?: string | null } }>(
     "/api/admin/users",
     { preHandler: requireAdmin },
     async (req, reply) => {
-      const { email, role } = req.body ?? {};
+      const { email, role, classId } = req.body ?? {};
 
       if (!email) {
         return reply.code(400).send({ error: "email is required" });
       }
 
       const user = await authRepo.upsertActiveUser(email, role ?? "member");
+      // Allow assigning the class directly when activating (e.g. a pending user).
+      if (classId !== undefined) {
+        const withClass = await authRepo.updateUser(user.id, { classId });
+        return reply.code(201).send(withClass ?? user);
+      }
       return reply.code(201).send(user);
     },
   );
@@ -48,16 +53,16 @@ export function registerAdminUserRoutes(app: FastifyInstance, deps: AdminUserRou
   // PATCH /api/admin/users/:id — update a user (admin only)
   app.patch<{
     Params: { id: string };
-    Body: { status?: UserStatus; role?: UserRole };
+    Body: { status?: UserStatus; role?: UserRole; classId?: string | null };
   }>(
     "/api/admin/users/:id",
     { preHandler: requireAdmin },
     async (req, reply) => {
       const { id } = req.params;
-      const { status, role } = req.body ?? {};
+      const { status, role, classId } = req.body ?? {};
 
       // Reject empty patch bodies — nothing to update
-      if (status === undefined && role === undefined) {
+      if (status === undefined && role === undefined && classId === undefined) {
         return reply.code(400).send({ error: "nothing to update" });
       }
 
@@ -68,7 +73,7 @@ export function registerAdminUserRoutes(app: FastifyInstance, deps: AdminUserRou
         }
       }
 
-      const updated = await authRepo.updateUser(id, { status, role });
+      const updated = await authRepo.updateUser(id, { status, role, classId });
 
       if (!updated) {
         return reply.code(404).send({ error: "not found" });

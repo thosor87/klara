@@ -14,7 +14,7 @@ class FakeRepo implements AuthRepo {
   async findUserById(id: string) { return this.users.find((u) => u.id === id) ?? null; }
   async createPendingUser(email: string) {
     const u: User = { id: `u${++this.seq}`, email, role: "member", status: "pending",
-      createdAt: new Date(0).toISOString() };
+      classId: null, createdAt: new Date(0).toISOString() };
     this.users.push(u); return u;
   }
   async insertLoginToken(t: NewLoginToken) {
@@ -42,14 +42,18 @@ class FakeRepo implements AuthRepo {
   async upsertActiveUser(email: string, role: UserRole): Promise<User> {
     const existing = this.users.find((u) => u.email === email);
     if (existing) { existing.status = "active"; existing.role = role; return existing; }
-    const u: User = { id: `u${++this.seq}`, email, role, status: "active", createdAt: new Date(0).toISOString() };
+    const u: User = { id: `u${++this.seq}`, email, role, status: "active", classId: null, createdAt: new Date(0).toISOString() };
     this.users.push(u); return u;
   }
-  async updateUser(id: string, data: { status?: UserStatus; role?: UserRole }): Promise<User | null> {
+  async updateUser(
+    id: string,
+    data: { status?: UserStatus; role?: UserRole; classId?: string | null },
+  ): Promise<User | null> {
     const u = this.users.find((x) => x.id === id);
     if (!u) return null;
     if (data.status !== undefined) u.status = data.status;
     if (data.role !== undefined) u.role = data.role;
+    if (data.classId !== undefined) u.classId = data.classId;
     return u;
   }
   async listAdminEmails(): Promise<string[]> {
@@ -77,7 +81,7 @@ describe("requestLogin", () => {
 
   it("aktiver Nutzer bekommt Mail mit 6-stelligem Code und Link → code_sent", async () => {
     repo.users.push({ id: "u1", email: "a@grundschule-xy.de", role: "member",
-      status: "active", createdAt: "x" });
+      status: "active", classId: null, createdAt: "x" });
     const outcome = await makeService(repo, mailer).requestLogin("  A@Grundschule-XY.de ");
     expect(outcome).toBe("code_sent");
     expect(mailer.sent).toHaveLength(1);
@@ -97,7 +101,7 @@ describe("requestLogin", () => {
 
   it("bereits pending angelegter Nutzer → pending, KEINE Mail, kein zweiter Nutzer", async () => {
     repo.users.push({ id: "u1", email: "wartet@grundschule-xy.de", role: "member",
-      status: "pending", createdAt: "x" });
+      status: "pending", classId: null, createdAt: "x" });
     const outcome = await makeService(repo, mailer).requestLogin("wartet@grundschule-xy.de");
     expect(outcome).toBe("pending");
     expect(repo.users).toHaveLength(1);
@@ -113,7 +117,7 @@ describe("requestLogin", () => {
 
   it("deaktivierter Nutzer → denied, KEINE Mail", async () => {
     repo.users.push({ id: "u1", email: "weg@grundschule-xy.de", role: "member",
-      status: "disabled", createdAt: "x" });
+      status: "disabled", classId: null, createdAt: "x" });
     const outcome = await makeService(repo, mailer).requestLogin("weg@grundschule-xy.de");
     expect(outcome).toBe("denied");
     expect(mailer.sent).toHaveLength(0);
@@ -126,7 +130,7 @@ describe("verifyCode", () => {
 
   it("korrekter Code eines aktiven Nutzers → User zurück, Token verbraucht", async () => {
     repo.users.push({ id: "u1", email: "a@grundschule-xy.de", role: "member",
-      status: "active", createdAt: "x" });
+      status: "active", classId: null, createdAt: "x" });
     const svc = makeService(repo, mailer);
     await svc.requestLogin("a@grundschule-xy.de");
     const code = mailer.sent[0].code;
@@ -137,7 +141,7 @@ describe("verifyCode", () => {
 
   it("falscher Code → null", async () => {
     repo.users.push({ id: "u1", email: "a@grundschule-xy.de", role: "member",
-      status: "active", createdAt: "x" });
+      status: "active", classId: null, createdAt: "x" });
     const svc = makeService(repo, mailer);
     await svc.requestLogin("a@grundschule-xy.de");
     expect(await svc.verifyCode("a@grundschule-xy.de", "000000")).toBeNull();
@@ -145,7 +149,7 @@ describe("verifyCode", () => {
 
   it("verbrauchter Token kann nicht erneut genutzt werden", async () => {
     repo.users.push({ id: "u1", email: "a@grundschule-xy.de", role: "member",
-      status: "active", createdAt: "x" });
+      status: "active", classId: null, createdAt: "x" });
     const svc = makeService(repo, mailer);
     await svc.requestLogin("a@grundschule-xy.de");
     const code = mailer.sent[0].code;
@@ -155,7 +159,7 @@ describe("verifyCode", () => {
 
   it("nach 5 falschen Versuchen wird auch der korrekte Code abgelehnt (Token gesperrt)", async () => {
     repo.users.push({ id: "u1", email: "a@grundschule-xy.de", role: "member",
-      status: "active", createdAt: "x" });
+      status: "active", classId: null, createdAt: "x" });
     const svc = makeService(repo, mailer);
     await svc.requestLogin("a@grundschule-xy.de");
     const correctCode = mailer.sent[0].code;
@@ -170,7 +174,7 @@ describe("verifyLink", () => {
   it("gültiger Link-Token → User", async () => {
     const repo = new FakeRepo(); const mailer = new FakeMailer();
     repo.users.push({ id: "u1", email: "a@grundschule-xy.de", role: "member",
-      status: "active", createdAt: "x" });
+      status: "active", classId: null, createdAt: "x" });
     const svc = makeService(repo, mailer);
     await svc.requestLogin("a@grundschule-xy.de");
     const token = new URL(mailer.sent[0].link).searchParams.get("token")!;
