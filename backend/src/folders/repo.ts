@@ -61,6 +61,14 @@ export interface FoldersRepo {
   move(id: string, direction: "up" | "down"): Promise<boolean>;
 }
 
+/** A DATE column comes back from postgres as a JS Date (UTC midnight); the API
+ *  must expose plain "YYYY-MM-DD" so the frontend date inputs + formatter work. */
+function toYMD(v: unknown): string | null {
+  if (v == null) return null;
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  return String(v).slice(0, 10);
+}
+
 function mapFolder(r: Record<string, unknown>, classIds: string[] = []): Folder {
   return {
     id: r.id as string,
@@ -71,8 +79,8 @@ function mapFolder(r: Record<string, unknown>, classIds: string[] = []): Folder 
     createdBy: (r.created_by as string | null) ?? null,
     createdAt: r.created_at as string,
     coverItemId: (r.cover_item_id as string | null) ?? null,
-    startDate: (r.start_date as string | null) ?? null,
-    endDate: (r.end_date as string | null) ?? null,
+    startDate: toYMD(r.start_date),
+    endDate: toYMD(r.end_date),
     sortOrder: (r.sort_order as number) ?? 0,
     classIds,
   };

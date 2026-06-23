@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type Folder, type ClassOption, type Item } from "../api";
-import { schoolYearOptions, formatDateRange } from "../dates";
+import { schoolYearOptions, formatDateRange, toDateInput } from "../dates";
 import { Trash } from "./Trash";
 
 type FormState = {
@@ -143,8 +143,8 @@ function FolderRow({
   const [form, setForm] = useState<FormState>({
     name: folder.name,
     schoolYear: folder.schoolYear ?? "",
-    startDate: folder.startDate ?? "",
-    endDate: folder.endDate ?? "",
+    startDate: toDateInput(folder.startDate),
+    endDate: toDateInput(folder.endDate),
     classIds: folder.classIds ?? [],
   });
   const [busy, setBusy] = useState(false);

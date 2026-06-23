@@ -13,9 +13,14 @@ export function schoolYearOptions(): string[] {
   return out.reverse();
 }
 
-/** Format an ISO date (YYYY-MM-DD) as German "DD.MM.YYYY". */
+/** Normalize any date-ish value to "YYYY-MM-DD" (tolerates full ISO timestamps). */
+export function toDateInput(v?: string | null): string {
+  return v ? v.slice(0, 10) : "";
+}
+
+/** Format a date (YYYY-MM-DD, or a fuller ISO string) as German "DD.MM.YYYY". */
 function formatISODate(iso: string): string {
-  const [y, m, d] = iso.split("-");
+  const [y, m, d] = iso.slice(0, 10).split("-");
   if (!y || !m || !d) return iso;
   return `${d}.${m}.${y}`;
 }
@@ -34,8 +39,8 @@ export function formatDateRange(
   if (!start) return "";
   if (!end || end === start) return formatISODate(start);
 
-  const [sy, sm, sd] = start.split("-");
-  const [ey, em, ed] = end.split("-");
+  const [sy, sm, sd] = start.slice(0, 10).split("-");
+  const [ey, em, ed] = end.slice(0, 10).split("-");
   if (sy === ey && sm === em) {
     return `${sd}.–${ed}.${sm}.${sy}`;
   }

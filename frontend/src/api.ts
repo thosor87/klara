@@ -332,6 +332,8 @@ export const api = {
       if (data?.error === "cannot_modify_self") return { error: "cannot_modify_self" };
       throw new Error(data?.error ?? `Fehler ${res.status}`);
     }
-    return res.json();
+    // The PATCH route returns the updated user object directly (not wrapped).
+    const updated = (await res.json()) as User;
+    return { user: updated };
   },
 };
