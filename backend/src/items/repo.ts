@@ -17,6 +17,7 @@ export interface Item {
   approvedBy: string | null;
   createdAt: string;
   trashedAt: string | null;
+  processing: boolean;
 }
 
 export interface ItemWithFolderName extends Item {
@@ -37,6 +38,7 @@ export interface ItemsRepo {
     caption: string;
     uploadedBy: string;
     type?: "photo" | "video";
+    processing?: boolean;
   }): Promise<Item | null>;
   listByFolder(folderId: string, statuses: ItemStatus[]): Promise<Item[]>;
   /** Returns approved + the requesting user's own pending items in a folder. */
@@ -72,6 +74,7 @@ function mapItem(r: Record<string, unknown>): Item {
     approvedBy: (r.approved_by as string | null) ?? null,
     createdAt: r.created_at as string,
     trashedAt: (r.trashed_at as string | null) ?? null,
+    processing: (r.processing as boolean | undefined) ?? false,
   };
 }
 
@@ -86,8 +89,8 @@ export function createPostgresItemsRepo(sql: SqlTag): ItemsRepo {
   return {
     async insertPending(data) {
       const rows = await sql<Record<string, unknown>[]>`
-        INSERT INTO items (id, folder_id, s3_key, thumb_key, caption, uploaded_by, type)
-        VALUES (${data.id}, ${data.folderId}, ${data.s3Key}, ${data.thumbKey}, ${data.caption}, ${data.uploadedBy}, ${data.type ?? "photo"})
+        INSERT INTO items (id, folder_id, s3_key, thumb_key, caption, uploaded_by, type, processing)
+        VALUES (${data.id}, ${data.folderId}, ${data.s3Key}, ${data.thumbKey}, ${data.caption}, ${data.uploadedBy}, ${data.type ?? "photo"}, ${data.processing ?? false})
         ON CONFLICT (id) DO NOTHING
         RETURNING *`;
       return rows.length ? mapItem(rows[0]) : null;
@@ -126,10 +129,11 @@ export function createPostgresItemsRepo(sql: SqlTag): ItemsRepo {
 
     async setStatusApproved(ids, approvedBy) {
       if (ids.length === 0) return 0;
+      // A video that is still transcoding (processing=true) cannot be approved yet.
       const rows = await sql<{ id: string }[]>`
         UPDATE items
         SET status = 'approved', approved_by = ${approvedBy}
-        WHERE id = ANY(${sql.array(ids)}::uuid[]) AND status = 'pending'
+        WHERE id = ANY(${sql.array(ids)}::uuid[]) AND status = 'pending' AND processing = false
         RETURNING id`;
       return rows.length;
     },

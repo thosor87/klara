@@ -297,7 +297,7 @@ describe("confirmUpload", () => {
     await svc.confirmUpload("f1", "item1", "", "u1", MEMBER_USER, "video");
 
     expect(insertPending).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "video", s3Key: "items/item1/source", thumbKey: "items/item1/thumb.jpg" }),
+      expect.objectContaining({ type: "video", s3Key: "items/item1/source", thumbKey: "items/item1/thumb.jpg", processing: true }),
     );
   });
 

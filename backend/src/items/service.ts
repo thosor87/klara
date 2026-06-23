@@ -131,6 +131,8 @@ export function createItemsService(deps: ItemsServiceDeps): ItemsService {
         caption: caption ?? "",
         uploadedBy: userId,
         type: kind,
+        // Videos await async transcoding (Phase B); photos are ready immediately.
+        processing: kind === "video",
       });
 
       if (!item) {
