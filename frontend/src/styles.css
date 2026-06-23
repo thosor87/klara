@@ -699,7 +699,9 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
 }
 .approval-lb-close:hover { background: rgba(255,255,255,.22); }
 .approval-lb-stage {
-  flex: 1; position: relative; display: grid; place-items: center; min-height: 0; padding: .5rem;
+  flex: 1; position: relative; min-height: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: .5rem clamp(.5rem, 4vw, 3rem);
 }
 .approval-lb-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
 .approval-lb-nav {
