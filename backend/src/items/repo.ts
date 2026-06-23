@@ -38,16 +38,22 @@ export interface ItemsRepo {
     uploadedBy: string;
   }): Promise<Item | null>;
   listByFolder(folderId: string, statuses: ItemStatus[]): Promise<Item[]>;
+  /** Returns approved + the requesting user's own pending items in a folder. */
+  listForMember(folderId: string, userId: string): Promise<Item[]>;
   listPending(): Promise<ItemWithFolderName[]>;
   setStatusApproved(ids: string[], approvedBy: string): Promise<number>;
   setStatusTrashed(ids: string[]): Promise<number>;
   findById(id: string): Promise<Item | null>;
+  /** Delete a DB row by id, returning its s3Key+thumbKey (or null if not found). */
+  deleteById(id: string): Promise<TrashedS3Keys | null>;
   listTrashed(): Promise<ItemWithFolderName[]>;
   restore(id: string): Promise<boolean>;
   countPending(): Promise<number>;
   purgeTrashed(before: Date): Promise<TrashedS3Keys[]>;
   /** Trash any item by id (regardless of current status). Used when a report is deleted. */
   trashItemById(id: string): Promise<boolean>;
+  /** Count of all items grouped by uploaded_by. */
+  uploadCountsByUser(): Promise<Record<string, number>>;
 }
 
 function mapItem(r: Record<string, unknown>): Item {
@@ -93,6 +99,18 @@ export function createPostgresItemsRepo(sql: SqlTag): ItemsRepo {
       return rows.map(mapItem);
     },
 
+    async listForMember(folderId, userId) {
+      const rows = await sql<Record<string, unknown>[]>`
+        SELECT * FROM items
+        WHERE folder_id = ${folderId}
+          AND (
+            status = 'approved'
+            OR (status = 'pending' AND uploaded_by = ${userId})
+          )
+        ORDER BY created_at DESC`;
+      return rows.map(mapItem);
+    },
+
     async listPending() {
       const rows = await sql<Record<string, unknown>[]>`
         SELECT items.*, folders.name AS folder_name
@@ -127,6 +145,13 @@ export function createPostgresItemsRepo(sql: SqlTag): ItemsRepo {
       const rows = await sql<Record<string, unknown>[]>`
         SELECT * FROM items WHERE id = ${id}`;
       return rows.length ? mapItem(rows[0]) : null;
+    },
+
+    async deleteById(id) {
+      const rows = await sql<{ s3_key: string; thumb_key: string }[]>`
+        DELETE FROM items WHERE id = ${id}
+        RETURNING s3_key, thumb_key`;
+      return rows.length ? { s3Key: rows[0].s3_key, thumbKey: rows[0].thumb_key } : null;
     },
 
     async listTrashed() {
@@ -169,6 +194,19 @@ export function createPostgresItemsRepo(sql: SqlTag): ItemsRepo {
         WHERE id = ${id}
         RETURNING id`;
       return rows.length > 0;
+    },
+
+    async uploadCountsByUser() {
+      const rows = await sql<{ uploaded_by: string; count: string }[]>`
+        SELECT uploaded_by, COUNT(*) AS count
+        FROM items
+        WHERE uploaded_by IS NOT NULL
+        GROUP BY uploaded_by`;
+      const result: Record<string, number> = {};
+      for (const row of rows) {
+        result[row.uploaded_by] = Number(row.count);
+      }
+      return result;
     },
   };
 }

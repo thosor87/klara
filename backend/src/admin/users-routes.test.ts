@@ -3,6 +3,7 @@ import Fastify, { type FastifyRequest, type FastifyReply } from "fastify";
 import fastifyCookie from "@fastify/cookie";
 import type { User } from "../types.js";
 import type { AuthRepo } from "../auth/repo.js";
+import type { ItemsRepo } from "../items/repo.js";
 import { registerAdminUserRoutes } from "./users-routes.js";
 
 // ---------------------------------------------------------------------------
@@ -59,7 +60,27 @@ function fakeAuthRepo(over: Partial<AuthRepo> = {}): AuthRepo {
   };
 }
 
-async function makeApp(authRepo: AuthRepo, user: User | null) {
+function fakeItemsRepo(over: Partial<ItemsRepo> = {}): ItemsRepo {
+  return {
+    insertPending: async () => null,
+    listByFolder: async () => [],
+    listForMember: async () => [],
+    listPending: async () => [],
+    setStatusApproved: async () => 0,
+    setStatusTrashed: async () => 0,
+    findById: async () => null,
+    deleteById: async () => null,
+    listTrashed: async () => [],
+    restore: async () => false,
+    countPending: async () => 0,
+    purgeTrashed: async () => [],
+    trashItemById: async () => false,
+    uploadCountsByUser: async () => ({}),
+    ...over,
+  };
+}
+
+async function makeApp(authRepo: AuthRepo, user: User | null, itemsRepo?: ItemsRepo) {
   const app = Fastify();
   await app.register(fastifyCookie, { secret: "test-secret" });
 
@@ -75,7 +96,7 @@ async function makeApp(authRepo: AuthRepo, user: User | null) {
     req.user = user;
   };
 
-  registerAdminUserRoutes(app, { authRepo, requireAdmin });
+  registerAdminUserRoutes(app, { authRepo, itemsRepo: itemsRepo ?? fakeItemsRepo(), requireAdmin });
   await app.ready();
   return app;
 }
@@ -85,17 +106,23 @@ async function makeApp(authRepo: AuthRepo, user: User | null) {
 // ---------------------------------------------------------------------------
 
 describe("GET /api/admin/users", () => {
-  it("admin → 200 + user list", async () => {
+  it("admin → 200 + user list with uploadCount", async () => {
     const repo = fakeAuthRepo({ listUsers: async () => [ADMIN, MEMBER] });
-    const app = await makeApp(repo, ADMIN);
+    // MEMBER has 3 uploads
+    const itemsRepo = fakeItemsRepo({
+      uploadCountsByUser: async () => ({ [MEMBER.id]: 3 }),
+    });
+    const app = await makeApp(repo, ADMIN, itemsRepo);
 
     const res = await app.inject({ method: "GET", url: "/api/admin/users" });
 
     expect(res.statusCode).toBe(200);
-    const body = res.json() as User[];
+    const body = res.json() as Array<User & { uploadCount: number }>;
     expect(body).toHaveLength(2);
     expect(body[0].id).toBe(ADMIN.id);
+    expect(body[0].uploadCount).toBe(0);
     expect(body[1].id).toBe(MEMBER.id);
+    expect(body[1].uploadCount).toBe(3);
   });
 
   it("member → 403", async () => {

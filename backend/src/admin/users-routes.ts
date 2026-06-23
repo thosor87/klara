@@ -1,22 +1,31 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { AuthRepo } from "../auth/repo.js";
+import type { ItemsRepo } from "../items/repo.js";
 import type { UserRole, UserStatus } from "../types.js";
 
 export interface AdminUserRoutesDeps {
   authRepo: AuthRepo;
+  itemsRepo: ItemsRepo;
   requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
 }
 
 export function registerAdminUserRoutes(app: FastifyInstance, deps: AdminUserRoutesDeps): void {
-  const { authRepo, requireAdmin } = deps;
+  const { authRepo, itemsRepo, requireAdmin } = deps;
 
   // GET /api/admin/users — list all users (admin only)
   app.get(
     "/api/admin/users",
     { preHandler: requireAdmin },
     async (_req, reply) => {
-      const users = await authRepo.listUsers();
-      return reply.send(users);
+      const [users, uploadCounts] = await Promise.all([
+        authRepo.listUsers(),
+        itemsRepo.uploadCountsByUser(),
+      ]);
+      const result = users.map((u) => ({
+        ...u,
+        uploadCount: uploadCounts[u.id] ?? 0,
+      }));
+      return reply.send(result);
     },
   );
 
