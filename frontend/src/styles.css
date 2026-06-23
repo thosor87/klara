@@ -953,3 +953,9 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
 .class-add-more:hover:not(:disabled) {
   background: var(--purple-tint); color: var(--purple-deep); border-style: solid;
 }
+
+/* Compact album form: classes + dates side by side, wrapping on narrow screens */
+.album-form-grid { display: flex; gap: 1.25rem 2.5rem; flex-wrap: wrap; align-items: flex-start; }
+.album-form-grid .form-field { margin: 0; }
+.album-form-classes { flex: 1 1 260px; min-width: 240px; }
+.album-form-grid .form-row { flex: 0 0 auto; }

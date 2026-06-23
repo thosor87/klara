@@ -88,7 +88,8 @@ function FolderFormFields({
         required
         autoFocus
       />
-      <div className="form-field">
+      <div className="album-form-grid">
+      <div className="form-field album-form-classes">
         <span className="form-label">
           Für welche Klassen?
           <Link to="/verwaltung/klassen" className="form-label-link">Klassen verwalten</Link>
@@ -135,6 +136,7 @@ function FolderFormFields({
             onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))}
           />
         </label>
+      </div>
       </div>
     </>
   );
