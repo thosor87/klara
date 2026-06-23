@@ -1,0 +1,16 @@
+{
+  "name": "KlaRa",
+  "short_name": "KlaRa",
+  "description": "Das private Klassenalbum unserer Klasse.",
+  "lang": "de",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#5b3fb0",
+  "background_color": "#f6f3ee",
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512" },
+    { "src": "/apple-touch-icon.png", "type": "image/png", "sizes": "180x180" }
+  ]
+}
