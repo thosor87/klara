@@ -18,6 +18,11 @@ import { createPostgresItemsRepo } from "./items/repo.js";
 import { createItemsService } from "./items/service.js";
 import { registerItemRoutes } from "./items/routes.js";
 import { registerAdminUserRoutes } from "./admin/users-routes.js";
+import { createPostgresReportsRepo } from "./reports/repo.js";
+import { createReportsService } from "./reports/service.js";
+import { registerReportRoutes } from "./reports/routes.js";
+import { registerTrashRoutes } from "./admin/trash-routes.js";
+import { registerCronRoutes } from "./cron/routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -71,6 +76,8 @@ export async function defaultRuntime(): Promise<BuildOptions> {
   const foldersRepo = createPostgresFoldersRepo(sql);
   const itemsRepo = createPostgresItemsRepo(sql);
   const itemsService = createItemsService({ itemsRepo, foldersRepo, storage });
+  const reportsRepo = createPostgresReportsRepo(sql);
+  const reportsService = createReportsService({ reportsRepo, itemsRepo, storage });
   const { requireUser, requireAdmin } = makeGuards((id) => authRepo.findUserById(id));
 
   return {
@@ -83,6 +90,14 @@ export async function defaultRuntime(): Promise<BuildOptions> {
       registerFolderRoutes(app, { foldersRepo, requireUser, requireAdmin });
       registerItemRoutes(app, { itemsService, requireUser, requireAdmin });
       registerAdminUserRoutes(app, { authRepo, requireAdmin });
+      registerReportRoutes(app, { reportsService, requireUser, requireAdmin });
+      registerTrashRoutes(app, {
+        itemsRepo, storage, trashRetentionDays: config.trashRetentionDays, requireAdmin,
+      });
+      registerCronRoutes(app, {
+        itemsRepo, reportsRepo, storage, mailer, authRepo,
+        cronSecret: config.cronSecret, trashRetentionDays: config.trashRetentionDays,
+      });
     },
   };
 }
