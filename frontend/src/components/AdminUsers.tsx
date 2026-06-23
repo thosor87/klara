@@ -3,7 +3,7 @@ import { api, type User } from "../api";
 
 function statusLabel(status: string): string {
   if (status === "active") return "Aktiv";
-  if (status === "pending") return "Ausstehend";
+  if (status === "pending") return "Wartet";
   if (status === "disabled") return "Deaktiviert";
   return status;
 }
@@ -41,15 +41,23 @@ function UserRow({
   const isPending = user.status === "pending";
   const isDisabled = user.status === "disabled";
   const isActive = user.status === "active";
+  const count = user.uploadCount ?? 0;
 
   return (
     <li className="admin-user-row">
       <div className="admin-user-info">
         <span className="admin-user-email">{user.email}</span>
-        <span className={`admin-folder-status ${isActive ? "status-active" : isPending ? "status-pending" : "status-disabled"}`}>
+        <span
+          className={`admin-folder-status ${
+            isActive ? "status-active" : isPending ? "status-pending" : "status-disabled"
+          }`}
+        >
           {statusLabel(user.status)}
         </span>
-        <span className="muted admin-folder-meta">{user.role === "admin" ? "Admin" : "Mitglied"}</span>
+        <span className={`role-pill role-pill--${user.role}`}>
+          {user.role === "admin" ? "Admin" : "Mitglied"}
+        </span>
+        <span className="upload-count">{count} {count === 1 ? "Foto" : "Fotos"}</span>
       </div>
       <div className="admin-folder-actions">
         {isPending && (
@@ -84,6 +92,42 @@ function UserRow({
   );
 }
 
+function UserSection({
+  title,
+  hint,
+  users,
+  onUpdated,
+  emptyText,
+  variant,
+}: {
+  title: string;
+  hint?: string;
+  users: User[];
+  onUpdated: (u: User) => void;
+  emptyText: string;
+  variant: "pending" | "admins" | "members";
+}) {
+  return (
+    <section className={`user-section user-section--${variant}`}>
+      <header className="user-section-head">
+        <h3 className="user-section-title">
+          {title} <span className="user-section-count">{users.length}</span>
+        </h3>
+        {hint && <p className="muted" style={{ margin: ".15rem 0 0" }}>{hint}</p>}
+      </header>
+      {users.length === 0 ? (
+        <p className="muted user-section-empty">{emptyText}</p>
+      ) : (
+        <ul className="admin-folder-list">
+          {users.map((u) => (
+            <UserRow key={u.id} user={u} onUpdated={onUpdated} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,7 +151,7 @@ export function AdminUsers() {
   }, []);
 
   function handleUpdated(updated: User) {
-    setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+    setUsers((prev) => prev.map((u) => (u.id === updated.id ? { ...updated, uploadCount: u.uploadCount } : u)));
   }
 
   async function handleAdd(e: React.FormEvent) {
@@ -134,12 +178,20 @@ export function AdminUsers() {
   if (error) return <p className="err">Nutzerliste konnte nicht geladen werden.</p>;
 
   const pending = users.filter((u) => u.status === "pending");
-  const rest = users.filter((u) => u.status !== "pending");
+  const admins = users.filter((u) => u.status !== "pending" && u.role === "admin");
+  const members = users.filter((u) => u.status !== "pending" && u.role === "member");
 
   return (
     <div className="admin-section">
+      <div className="page-head">
+        <p className="page-kicker">Verwaltung</p>
+        <h1 className="page-title">Nutzer</h1>
+      </div>
+
       <div className="admin-section-header">
-        <h2>Nutzer-Verwaltung</h2>
+        <p className="muted" style={{ margin: 0 }}>
+          {users.length} {users.length === 1 ? "Konto" : "Konten"} insgesamt
+        </p>
         <button style={{ width: "auto", margin: 0 }} onClick={() => setShowAdd((v) => !v)}>
           {showAdd ? "Abbrechen" : "+ Nutzer einladen"}
         </button>
@@ -189,32 +241,33 @@ export function AdminUsers() {
         </div>
       )}
 
-      {!users.length && <p className="muted">Noch keine Nutzer vorhanden.</p>}
-
-      {pending.length > 0 && (
-        <>
-          <h3 style={{ margin: "1.5rem 0 .5rem", color: "#5b3fb0", fontSize: "1rem" }}>
-            Ausstehende Anfragen ({pending.length})
-          </h3>
-          <ul className="admin-folder-list">
-            {pending.map((u) => (
-              <UserRow key={u.id} user={u} onUpdated={handleUpdated} />
-            ))}
-          </ul>
-        </>
-      )}
-
-      {rest.length > 0 && (
-        <>
-          <h3 style={{ margin: "1.5rem 0 .5rem", color: "#1f1b2e", fontSize: "1rem" }}>
-            Alle Nutzer ({rest.length})
-          </h3>
-          <ul className="admin-folder-list">
-            {rest.map((u) => (
-              <UserRow key={u.id} user={u} onUpdated={handleUpdated} />
-            ))}
-          </ul>
-        </>
+      {!users.length ? (
+        <p className="muted">Noch keine Nutzer vorhanden.</p>
+      ) : (
+        <div className="user-sections">
+          <UserSection
+            title="Wartet auf Freischaltung"
+            hint="Diese Adressen haben sich angemeldet und warten auf deine Freischaltung."
+            users={pending}
+            onUpdated={handleUpdated}
+            emptyText="Keine offenen Anfragen."
+            variant="pending"
+          />
+          <UserSection
+            title="Lehrerinnen / Admins"
+            users={admins}
+            onUpdated={handleUpdated}
+            emptyText="Noch keine Admins."
+            variant="admins"
+          />
+          <UserSection
+            title="Mitglieder"
+            users={members}
+            onUpdated={handleUpdated}
+            emptyText="Noch keine Mitglieder."
+            variant="members"
+          />
+        </div>
       )}
     </div>
   );
