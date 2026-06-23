@@ -1,18 +1,24 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { api, type Folder, type ClassOption, type Item } from "../api";
-import { schoolYearOptions, formatDateRange, toDateInput } from "../dates";
+import { Link, useOutletContext } from "react-router-dom";
+import { api, type Folder, type ClassOption, type Item, type Me } from "../api";
+import { formatDateRange, toDateInput } from "../dates";
 import { Trash } from "./Trash";
+
+type OutletCtx = { me?: Me };
 
 type FormState = {
   name: string;
-  schoolYear: string;
   startDate: string;
   endDate: string;
   classIds: string[];
 };
 
-const emptyForm: FormState = { name: "", schoolYear: "", startDate: "", endDate: "", classIds: [] };
+const emptyForm: FormState = { name: "", startDate: "", endDate: "", classIds: [] };
+
+/** Chip label for a class in the picker: computed label, plus schoolYear for active cohorts. */
+function chipLabel(c: ClassOption): string {
+  return c.status === "active" && c.schoolYear ? `${c.label} · ${c.schoolYear}` : c.label;
+}
 
 /** Small chips showing the classes an album is assigned to (labels via class-options). */
 function ClassChips({ classIds, classOptions }: { classIds: string[]; classOptions: ClassOption[] }) {
@@ -39,7 +45,11 @@ function FolderFormFields({
   setForm: React.Dispatch<React.SetStateAction<FormState>>;
   classOptions: ClassOption[];
 }) {
-  const years = schoolYearOptions();
+  // Only active (and legacy) cohorts are assignable; alumni/archived/expired/future are hidden.
+  // Keep any class already selected on the album, even if it has since aged out.
+  const selectable = classOptions.filter(
+    (c) => c.status === "active" || c.status === "legacy" || form.classIds.includes(c.id),
+  );
   return (
     <>
       <input
@@ -49,30 +59,18 @@ function FolderFormFields({
         required
         autoFocus
       />
-      <label className="form-field">
-        <span className="form-label">Schuljahr</span>
-        <select
-          value={form.schoolYear}
-          onChange={(e) => setForm((p) => ({ ...p, schoolYear: e.target.value }))}
-        >
-          <option value="">— kein Schuljahr —</option>
-          {years.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
-      </label>
       <div className="form-field">
         <span className="form-label">
           Für welche Klassen?
           <Link to="/verwaltung/klassen" className="form-label-link">Klassen verwalten</Link>
         </span>
-        {classOptions.length === 0 ? (
+        {selectable.length === 0 ? (
           <p className="muted" style={{ margin: ".2rem 0 0", fontSize: ".85rem" }}>
-            Noch keine Klassen angelegt. Lege sie unter „Klassen verwalten“ an.
+            Noch keine aktiven Klassen. Lege sie unter „Klassen verwalten“ an.
           </p>
         ) : (
           <div className="class-toggle-row" role="group" aria-label="Klassen">
-            {classOptions.map((c) => {
+            {selectable.map((c) => {
               const active = form.classIds.includes(c.id);
               return (
                 <button
@@ -89,13 +87,13 @@ function FolderFormFields({
                     }))
                   }
                 >
-                  {c.label}
+                  {chipLabel(c)}
                 </button>
               );
             })}
           </div>
         )}
-        {form.classIds.length === 0 && classOptions.length > 0 && (
+        {form.classIds.length === 0 && selectable.length > 0 && (
           <p className="muted class-toggle-hint">Ohne Klasse sehen nur Admins dieses Album.</p>
         )}
       </div>
@@ -142,7 +140,6 @@ function FolderRow({
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<FormState>({
     name: folder.name,
-    schoolYear: folder.schoolYear ?? "",
     startDate: toDateInput(folder.startDate),
     endDate: toDateInput(folder.endDate),
     classIds: folder.classIds ?? [],
@@ -158,7 +155,6 @@ function FolderRow({
     try {
       const updated = await api.updateFolder(folder.id, {
         name: form.name.trim(),
-        schoolYear: form.schoolYear || undefined,
         startDate: form.startDate || null,
         endDate: form.endDate || null,
         classIds: form.classIds,
@@ -230,9 +226,6 @@ function FolderRow({
       )}
       <div className="admin-folder-info">
         <span className="admin-folder-name">{folder.name}</span>
-        {folder.schoolYear && (
-          <span className="muted admin-folder-meta">{folder.schoolYear}</span>
-        )}
         <ClassChips classIds={folder.classIds ?? []} classOptions={classOptions} />
         {range && <span className="muted admin-folder-meta">{range}</span>}
         <span className={`admin-folder-status ${folder.enabled ? "status-active" : "status-disabled"}`}>
@@ -348,12 +341,16 @@ function CoverPicker({
 }
 
 export function AdminFolders() {
+  const { me } = useOutletContext<OutletCtx>();
+  // A new album defaults to the admin's own class (teachers are usually assigned to one).
+  const newAlbumForm = (): FormState =>
+    me?.classId ? { ...emptyForm, classIds: [me.classId] } : emptyForm;
   const [folders, setFolders] = useState<Folder[]>([]);
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState<FormState>(emptyForm);
+  const [createForm, setCreateForm] = useState<FormState>(newAlbumForm);
   const [createBusy, setCreateBusy] = useState(false);
   const [createErr, setCreateErr] = useState("");
   const [coverFor, setCoverFor] = useState<Folder | null>(null);
@@ -400,13 +397,12 @@ export function AdminFolders() {
     try {
       await api.createFolder({
         name: createForm.name.trim(),
-        schoolYear: createForm.schoolYear || undefined,
         startDate: createForm.startDate || null,
         endDate: createForm.endDate || null,
         classIds: createForm.classIds,
       });
       await reload();
-      setCreateForm(emptyForm);
+      setCreateForm(newAlbumForm());
       setShowCreate(false);
     } catch (e: any) {
       setCreateErr(e.message ?? "Fehler beim Anlegen.");
@@ -422,7 +418,15 @@ export function AdminFolders() {
     <div className="admin-section">
       <div className="admin-section-header">
         <h2>Alben verwalten</h2>
-        <button style={{ width: "auto", margin: 0 }} onClick={() => setShowCreate((v) => !v)}>
+        <button
+          style={{ width: "auto", margin: 0 }}
+          onClick={() =>
+            setShowCreate((v) => {
+              if (!v) setCreateForm(newAlbumForm());
+              return !v;
+            })
+          }
+        >
           {showCreate ? "Abbrechen" : "+ Neues Album"}
         </button>
       </div>
