@@ -11,6 +11,10 @@ export interface Folder {
   enabled: boolean;
   createdBy: string | null;
   createdAt: string;
+  coverItemId: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  sortOrder: number;
 }
 
 export interface FoldersRepo {
@@ -21,14 +25,30 @@ export interface FoldersRepo {
     schoolYear: string;
     classLabel: string;
     createdBy: string;
+    coverItemId?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
   }): Promise<Folder>;
   update(
     id: string,
-    data: { name?: string; schoolYear?: string; classLabel?: string; enabled?: boolean },
+    data: {
+      name?: string;
+      schoolYear?: string;
+      classLabel?: string;
+      enabled?: boolean;
+      coverItemId?: string | null;
+      startDate?: string | null;
+      endDate?: string | null;
+    },
   ): Promise<Folder | null>;
   findById(id: string): Promise<Folder | null>;
   /** folderId → approved item count */
   itemCounts(): Promise<Map<string, number>>;
+  /**
+   * Swap sort_order with adjacent folder (up = lower sort_order, down = higher).
+   * Returns true if swap happened, false if already at boundary (no-op).
+   */
+  move(id: string, direction: "up" | "down"): Promise<boolean>;
 }
 
 function mapFolder(r: Record<string, unknown>): Folder {
@@ -40,6 +60,10 @@ function mapFolder(r: Record<string, unknown>): Folder {
     enabled: r.enabled as boolean,
     createdBy: (r.created_by as string | null) ?? null,
     createdAt: r.created_at as string,
+    coverItemId: (r.cover_item_id as string | null) ?? null,
+    startDate: (r.start_date as string | null) ?? null,
+    endDate: (r.end_date as string | null) ?? null,
+    sortOrder: (r.sort_order as number) ?? 0,
   };
 }
 
@@ -47,20 +71,23 @@ export function createPostgresFoldersRepo(sql: SqlTag): FoldersRepo {
   return {
     async listAll() {
       const rows = await sql<Record<string, unknown>[]>`
-        SELECT * FROM folders ORDER BY created_at DESC`;
+        SELECT * FROM folders ORDER BY sort_order, created_at`;
       return rows.map(mapFolder);
     },
 
     async listEnabled() {
       const rows = await sql<Record<string, unknown>[]>`
-        SELECT * FROM folders WHERE enabled = true ORDER BY created_at DESC`;
+        SELECT * FROM folders WHERE enabled = true ORDER BY sort_order, created_at`;
       return rows.map(mapFolder);
     },
 
     async create(data) {
       const rows = await sql<Record<string, unknown>[]>`
-        INSERT INTO folders (name, school_year, class_label, created_by)
-        VALUES (${data.name}, ${data.schoolYear}, ${data.classLabel}, ${data.createdBy})
+        INSERT INTO folders (name, school_year, class_label, created_by, cover_item_id, start_date, end_date)
+        VALUES (
+          ${data.name}, ${data.schoolYear}, ${data.classLabel}, ${data.createdBy},
+          ${data.coverItemId ?? null}, ${data.startDate ?? null}, ${data.endDate ?? null}
+        )
         RETURNING *`;
       return mapFolder(rows[0]);
     },
@@ -77,6 +104,9 @@ export function createPostgresFoldersRepo(sql: SqlTag): FoldersRepo {
       if (data.schoolYear !== undefined) updates.school_year = data.schoolYear;
       if (data.classLabel !== undefined) updates.class_label = data.classLabel;
       if (data.enabled !== undefined) updates.enabled = data.enabled;
+      if (data.coverItemId !== undefined) updates.cover_item_id = data.coverItemId;
+      if (data.startDate !== undefined) updates.start_date = data.startDate;
+      if (data.endDate !== undefined) updates.end_date = data.endDate;
 
       if (Object.keys(updates).length === 0) {
         return this.findById(id);
@@ -99,6 +129,31 @@ export function createPostgresFoldersRepo(sql: SqlTag): FoldersRepo {
         map.set(row.folder_id, Number(row.count));
       }
       return map;
+    },
+
+    async move(id, direction) {
+      // Get all folders ordered by sort_order, created_at to find neighbors
+      const all = await sql<{ id: string; sort_order: number }[]>`
+        SELECT id, sort_order FROM folders ORDER BY sort_order, created_at`;
+
+      const idx = all.findIndex((f) => f.id === id);
+      if (idx === -1) return false;
+
+      const neighborIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (neighborIdx < 0 || neighborIdx >= all.length) return false;
+
+      const current = all[idx];
+      const neighbor = all[neighborIdx];
+
+      // Swap sort_orders
+      await sql`
+        UPDATE folders SET sort_order = CASE
+          WHEN id = ${current.id} THEN ${neighbor.sort_order}
+          WHEN id = ${neighbor.id} THEN ${current.sort_order}
+        END
+        WHERE id IN (${current.id}, ${neighbor.id})`;
+
+      return true;
     },
   };
 }

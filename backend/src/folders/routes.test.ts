@@ -3,6 +3,8 @@ import Fastify, { type FastifyRequest, type FastifyReply } from "fastify";
 import fastifyCookie from "@fastify/cookie";
 import type { User } from "../types.js";
 import type { FoldersRepo, Folder } from "./repo.js";
+import type { ItemsRepo, Item } from "../items/repo.js";
+import type { Storage } from "../storage/s3.js";
 import { registerFolderRoutes } from "./routes.js";
 
 // ---------------------------------------------------------------------------
@@ -33,6 +35,10 @@ const FOLDER_ENABLED: Folder = {
   enabled: true,
   createdBy: "u-admin",
   createdAt: "2024-01-01",
+  coverItemId: null,
+  startDate: null,
+  endDate: null,
+  sortOrder: 0,
 };
 
 const FOLDER_DISABLED: Folder = {
@@ -43,6 +49,24 @@ const FOLDER_DISABLED: Folder = {
   enabled: false,
   createdBy: "u-admin",
   createdAt: "2023-01-01",
+  coverItemId: null,
+  startDate: null,
+  endDate: null,
+  sortOrder: 1,
+};
+
+const APPROVED_ITEM: Item = {
+  id: "item-cover",
+  folderId: "f-enabled",
+  type: "photo",
+  status: "approved",
+  s3Key: "items/item-cover/web.jpg",
+  thumbKey: "items/item-cover/thumb.jpg",
+  caption: "",
+  uploadedBy: "u-member",
+  approvedBy: "u-admin",
+  createdAt: "2024-01-01",
+  trashedAt: null,
 };
 
 function fakeFoldersRepo(over: Partial<FoldersRepo> = {}): FoldersRepo {
@@ -57,15 +81,55 @@ function fakeFoldersRepo(over: Partial<FoldersRepo> = {}): FoldersRepo {
       enabled: true,
       createdBy: d.createdBy,
       createdAt: "2024-01-01",
+      coverItemId: d.coverItemId ?? null,
+      startDate: d.startDate ?? null,
+      endDate: d.endDate ?? null,
+      sortOrder: 0,
     }),
     update: async () => null,
     findById: async () => null,
     itemCounts: async () => new Map(),
+    move: async () => false,
     ...over,
   };
 }
 
-async function makeApp(foldersRepo: FoldersRepo, user: User | null) {
+function fakeItemsRepo(over: Partial<ItemsRepo> = {}): ItemsRepo {
+  return {
+    insertPending: async () => null,
+    listByFolder: async () => [],
+    listForMember: async () => [],
+    listPending: async () => [],
+    setStatusApproved: async () => 0,
+    setStatusTrashed: async () => 0,
+    findById: async () => null,
+    deleteById: async () => null,
+    listTrashed: async () => [],
+    restore: async () => false,
+    countPending: async () => 0,
+    purgeTrashed: async () => [],
+    trashItemById: async () => false,
+    uploadCountsByUser: async () => ({}),
+    ...over,
+  };
+}
+
+function fakeStorage(over: Partial<Storage> = {}): Storage {
+  return {
+    presignPut: async (key) => `https://s3.example.com/put/${key}`,
+    presignGet: async (key) => `https://s3.example.com/get/${key}`,
+    headExists: async () => true,
+    deleteObjects: async () => {},
+    ...over,
+  };
+}
+
+async function makeApp(
+  foldersRepo: FoldersRepo,
+  user: User | null,
+  itemsRepo?: ItemsRepo,
+  storage?: Storage,
+) {
   const app = Fastify();
   await app.register(fastifyCookie, { secret: "test-secret" });
 
@@ -90,7 +154,13 @@ async function makeApp(foldersRepo: FoldersRepo, user: User | null) {
     req.user = user;
   };
 
-  registerFolderRoutes(app, { foldersRepo, requireUser, requireAdmin });
+  registerFolderRoutes(app, {
+    foldersRepo,
+    itemsRepo: itemsRepo ?? fakeItemsRepo(),
+    storage: storage ?? fakeStorage(),
+    requireUser,
+    requireAdmin,
+  });
   await app.ready();
   return app;
 }
@@ -133,6 +203,35 @@ describe("GET /api/folders", () => {
     expect(body.find((f) => f.id === "f-enabled")?.itemCount).toBe(3);
   });
 
+  it("folder with cover item returns coverThumbUrl", async () => {
+    const folderWithCover: Folder = { ...FOLDER_ENABLED, coverItemId: APPROVED_ITEM.id };
+    const repo = fakeFoldersRepo({
+      listEnabled: async () => [folderWithCover],
+      itemCounts: async () => new Map(),
+    });
+    const itemsRepo = fakeItemsRepo({ findById: async () => APPROVED_ITEM });
+    const app = await makeApp(repo, MEMBER, itemsRepo);
+
+    const res = await app.inject({ method: "GET", url: "/api/folders" });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as Array<{ coverThumbUrl: string | null }>;
+    expect(body[0].coverThumbUrl).toBe(`https://s3.example.com/get/${APPROVED_ITEM.thumbKey}`);
+  });
+
+  it("folder without cover item returns coverThumbUrl: null", async () => {
+    const repo = fakeFoldersRepo({
+      listEnabled: async () => [FOLDER_ENABLED],
+      itemCounts: async () => new Map(),
+    });
+    const app = await makeApp(repo, MEMBER);
+
+    const res = await app.inject({ method: "GET", url: "/api/folders" });
+
+    const body = res.json() as Array<{ coverThumbUrl: string | null }>;
+    expect(body[0].coverThumbUrl).toBeNull();
+  });
+
   it("unauthenticated → 401", async () => {
     const app = await makeApp(fakeFoldersRepo(), null);
     const res = await app.inject({ method: "GET", url: "/api/folders" });
@@ -156,6 +255,10 @@ describe("POST /api/admin/folders", () => {
         enabled: true,
         createdBy: d.createdBy,
         createdAt: "2024-06-01",
+        coverItemId: null,
+        startDate: null,
+        endDate: null,
+        sortOrder: 0,
       }),
     });
     const app = await makeApp(repo, ADMIN);
@@ -173,6 +276,36 @@ describe("POST /api/admin/folders", () => {
     expect(body.schoolYear).toBe("2024/25");
     expect(body.classLabel).toBe("2b");
     expect(body.createdBy).toBe(ADMIN.id);
+  });
+
+  it("admin creates folder with startDate/endDate → included in result", async () => {
+    const repo = fakeFoldersRepo({
+      create: async (d) => ({
+        id: "f-new",
+        name: d.name,
+        schoolYear: d.schoolYear ?? "",
+        classLabel: d.classLabel ?? "",
+        enabled: true,
+        createdBy: d.createdBy,
+        createdAt: "2024-06-01",
+        coverItemId: null,
+        startDate: d.startDate ?? null,
+        endDate: d.endDate ?? null,
+        sortOrder: 0,
+      }),
+    });
+    const app = await makeApp(repo, ADMIN);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/folders",
+      payload: { name: "Ausflug", startDate: "2024-06-14", endDate: "2024-06-16" },
+    });
+
+    expect(res.statusCode).toBe(201);
+    const body = res.json() as Folder;
+    expect(body.startDate).toBe("2024-06-14");
+    expect(body.endDate).toBe("2024-06-16");
   });
 
   it("member → 403", async () => {
@@ -204,7 +337,10 @@ describe("POST /api/admin/folders", () => {
 
 describe("PATCH /api/admin/folders/:id", () => {
   it("admin updates folder → 200 with updated folder", async () => {
-    const updated: Folder = { ...FOLDER_ENABLED, name: "Aktualisiert", enabled: false };
+    const updated: Folder = {
+      ...FOLDER_ENABLED, name: "Aktualisiert", enabled: false,
+      coverItemId: null, startDate: null, endDate: null, sortOrder: 0,
+    };
     const repo = fakeFoldersRepo({
       update: async (_id, _data) => updated,
     });
@@ -220,6 +356,54 @@ describe("PATCH /api/admin/folders/:id", () => {
     const body = res.json() as Folder;
     expect(body.name).toBe("Aktualisiert");
     expect(body.enabled).toBe(false);
+  });
+
+  it("setting valid coverItemId (approved, same folder) → 200", async () => {
+    const updated: Folder = { ...FOLDER_ENABLED, coverItemId: APPROVED_ITEM.id };
+    const repo = fakeFoldersRepo({ update: async () => updated });
+    const itemsRepo = fakeItemsRepo({ findById: async () => APPROVED_ITEM });
+    const app = await makeApp(repo, ADMIN, itemsRepo);
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/admin/folders/${FOLDER_ENABLED.id}`,
+      payload: { coverItemId: APPROVED_ITEM.id },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ coverItemId: APPROVED_ITEM.id });
+  });
+
+  it("coverItemId from different folder → 400 invalid_cover", async () => {
+    const wrongFolderItem: Item = { ...APPROVED_ITEM, folderId: "other-folder" };
+    const repo = fakeFoldersRepo();
+    const itemsRepo = fakeItemsRepo({ findById: async () => wrongFolderItem });
+    const app = await makeApp(repo, ADMIN, itemsRepo);
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/admin/folders/${FOLDER_ENABLED.id}`,
+      payload: { coverItemId: APPROVED_ITEM.id },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "invalid_cover" });
+  });
+
+  it("coverItemId pointing to pending item → 400 invalid_cover", async () => {
+    const pendingItem: Item = { ...APPROVED_ITEM, status: "pending" };
+    const repo = fakeFoldersRepo();
+    const itemsRepo = fakeItemsRepo({ findById: async () => pendingItem });
+    const app = await makeApp(repo, ADMIN, itemsRepo);
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/admin/folders/${FOLDER_ENABLED.id}`,
+      payload: { coverItemId: APPROVED_ITEM.id },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "invalid_cover" });
   });
 
   it("unknown id → 404", async () => {
@@ -245,5 +429,61 @@ describe("PATCH /api/admin/folders/:id", () => {
     });
     expect(res.statusCode).toBe(403);
     expect(res.json()).toEqual({ error: "forbidden" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/folders/:id/move
+// ---------------------------------------------------------------------------
+
+describe("POST /api/admin/folders/:id/move", () => {
+  it("admin moves folder up → 200 { moved: true }", async () => {
+    const repo = fakeFoldersRepo({ move: async () => true });
+    const app = await makeApp(repo, ADMIN);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/folders/f-enabled/move",
+      payload: { direction: "up" },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ moved: true });
+  });
+
+  it("already at top, move up → 200 { moved: false } (no-op)", async () => {
+    const repo = fakeFoldersRepo({ move: async () => false });
+    const app = await makeApp(repo, ADMIN);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/folders/f-enabled/move",
+      payload: { direction: "up" },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ moved: false });
+  });
+
+  it("invalid direction → 400", async () => {
+    const app = await makeApp(fakeFoldersRepo(), ADMIN);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/folders/f-enabled/move",
+      payload: { direction: "sideways" },
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("member → 403", async () => {
+    const app = await makeApp(fakeFoldersRepo(), MEMBER);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/folders/f-enabled/move",
+      payload: { direction: "up" },
+    });
+    expect(res.statusCode).toBe(403);
   });
 });

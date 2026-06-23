@@ -96,9 +96,9 @@ export async function defaultRuntime(): Promise<BuildOptions> {
         sessionMaxDays: config.sessionMaxDays,
         isProd: config.nodeEnv === "production",
       });
-      registerFolderRoutes(app, { foldersRepo, requireUser, requireAdmin });
+      registerFolderRoutes(app, { foldersRepo, itemsRepo, storage, requireUser, requireAdmin });
       registerItemRoutes(app, { itemsService, requireUser, requireAdmin });
-      registerAdminUserRoutes(app, { authRepo, requireAdmin });
+      registerAdminUserRoutes(app, { authRepo, itemsRepo, requireAdmin });
       registerReportRoutes(app, { reportsService, requireUser, requireAdmin });
       registerTrashRoutes(app, {
         itemsRepo, storage, trashRetentionDays: config.trashRetentionDays, requireAdmin,

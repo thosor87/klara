@@ -1,14 +1,18 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { FoldersRepo } from "./repo.js";
+import type { ItemsRepo } from "../items/repo.js";
+import type { Storage } from "../storage/s3.js";
 
 export interface FolderRoutesDeps {
   foldersRepo: FoldersRepo;
+  itemsRepo: ItemsRepo;
+  storage: Storage;
   requireUser: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
 }
 
 export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDeps): void {
-  const { foldersRepo, requireUser, requireAdmin } = deps;
+  const { foldersRepo, itemsRepo, storage, requireUser, requireAdmin } = deps;
 
   // GET /api/folders — members see only enabled, admins see all
   app.get(
@@ -22,25 +26,50 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
 
       const counts = await foldersRepo.itemCounts();
 
-      const result = folders.map((f) => ({
-        id: f.id,
-        name: f.name,
-        schoolYear: f.schoolYear,
-        classLabel: f.classLabel,
-        enabled: f.enabled,
-        itemCount: counts.get(f.id) ?? 0,
-      }));
+      const result = await Promise.all(
+        folders.map(async (f) => {
+          let coverThumbUrl: string | null = null;
+          if (f.coverItemId) {
+            const coverItem = await itemsRepo.findById(f.coverItemId);
+            if (coverItem) {
+              coverThumbUrl = await storage.presignGet(coverItem.thumbKey);
+            }
+          }
+          return {
+            id: f.id,
+            name: f.name,
+            schoolYear: f.schoolYear,
+            classLabel: f.classLabel,
+            enabled: f.enabled,
+            sortOrder: f.sortOrder,
+            startDate: f.startDate,
+            endDate: f.endDate,
+            coverItemId: f.coverItemId,
+            coverThumbUrl,
+            itemCount: counts.get(f.id) ?? 0,
+          };
+        }),
+      );
 
       return reply.send(result);
     },
   );
 
   // POST /api/admin/folders — create a folder (admin only)
-  app.post<{ Body: { name?: string; schoolYear?: string; classLabel?: string } }>(
+  app.post<{
+    Body: {
+      name?: string;
+      schoolYear?: string;
+      classLabel?: string;
+      coverItemId?: string;
+      startDate?: string;
+      endDate?: string;
+    };
+  }>(
     "/api/admin/folders",
     { preHandler: requireAdmin },
     async (req, reply) => {
-      const { name, schoolYear, classLabel } = req.body ?? {};
+      const { name, schoolYear, classLabel, coverItemId, startDate, endDate } = req.body ?? {};
 
       if (!name) {
         return reply.code(400).send({ error: "name is required" });
@@ -51,6 +80,9 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
         schoolYear: schoolYear ?? "",
         classLabel: classLabel ?? "",
         createdBy: req.user!.id,
+        coverItemId: coverItemId ?? null,
+        startDate: startDate ?? null,
+        endDate: endDate ?? null,
       });
 
       return reply.code(201).send(folder);
@@ -60,21 +92,65 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
   // PATCH /api/admin/folders/:id — update a folder (admin only)
   app.patch<{
     Params: { id: string };
-    Body: { name?: string; schoolYear?: string; classLabel?: string; enabled?: boolean };
+    Body: {
+      name?: string;
+      schoolYear?: string;
+      classLabel?: string;
+      enabled?: boolean;
+      coverItemId?: string | null;
+      startDate?: string | null;
+      endDate?: string | null;
+    };
   }>(
     "/api/admin/folders/:id",
     { preHandler: requireAdmin },
     async (req, reply) => {
       const { id } = req.params;
-      const { name, schoolYear, classLabel, enabled } = req.body ?? {};
+      const { name, schoolYear, classLabel, enabled, coverItemId, startDate, endDate } = req.body ?? {};
 
-      const updated = await foldersRepo.update(id, { name, schoolYear, classLabel, enabled });
+      // Validate coverItemId: must be an approved item of THIS folder
+      if (coverItemId !== undefined && coverItemId !== null) {
+        const coverItem = await itemsRepo.findById(coverItemId);
+        if (!coverItem || coverItem.folderId !== id || coverItem.status !== "approved") {
+          return reply.code(400).send({ error: "invalid_cover" });
+        }
+      }
+
+      const updated = await foldersRepo.update(id, {
+        name,
+        schoolYear,
+        classLabel,
+        enabled,
+        coverItemId,
+        startDate,
+        endDate,
+      });
 
       if (!updated) {
         return reply.code(404).send({ error: "not found" });
       }
 
       return reply.send(updated);
+    },
+  );
+
+  // POST /api/admin/folders/:id/move — move folder up or down in sort_order
+  app.post<{
+    Params: { id: string };
+    Body: { direction?: "up" | "down" };
+  }>(
+    "/api/admin/folders/:id/move",
+    { preHandler: requireAdmin },
+    async (req, reply) => {
+      const { id } = req.params;
+      const { direction } = req.body ?? {};
+
+      if (direction !== "up" && direction !== "down") {
+        return reply.code(400).send({ error: "direction must be 'up' or 'down'" });
+      }
+
+      const moved = await foldersRepo.move(id, direction);
+      return reply.send({ moved });
     },
   );
 }
