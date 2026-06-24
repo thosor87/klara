@@ -51,7 +51,7 @@ if aws lambda get-function --function-name "$FN" --profile "$PROFILE" --region "
 else
   echo "→ creating function …" >&2
   aws lambda create-function --function-name "$FN" \
-    --runtime nodejs20.x --architectures arm64 --handler index.handler \
+    --runtime nodejs22.x --architectures arm64 --handler index.handler \
     --role "arn:aws:iam::$ACCT:role/$ROLE" --zip-file "fileb://$here/function.zip" \
     "${COMMON_CFG[@]}" >/dev/null
 fi

@@ -1,0 +1,32 @@
+version: 2
+updates:
+  # Root npm workspace: covers root + backend + frontend (npm workspaces).
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      # Bundle minor/patch bumps into one PR to cut noise; majors stay separate.
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  # Vercel function entry (standalone package.json, not in the workspace).
+  - package-ecosystem: "npm"
+    directory: "/api"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  # Video transcoder Lambda (standalone, has its own deps e.g. postgres).
+  - package-ecosystem: "npm"
+    directory: "/lambda/video-transcoder"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]

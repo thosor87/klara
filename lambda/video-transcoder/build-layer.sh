@@ -32,7 +32,7 @@ arn="$(aws lambda publish-layer-version \
   --description "static ffmpeg (arm64) for klara video transcoding" \
   --content "S3Bucket=$BUCKET,S3Key=_deploy/ffmpeg-layer.zip" \
   --compatible-architectures arm64 \
-  --compatible-runtimes nodejs20.x \
+  --compatible-runtimes nodejs22.x nodejs20.x \
   --profile "$PROFILE" --region "$REGION" \
   --query 'LayerVersionArn' --output text)"
 
