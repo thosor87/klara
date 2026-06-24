@@ -30,6 +30,8 @@ export interface AuthRepo {
   ): Promise<User | null>;
   /** Bulk-assign (or clear) a class for many users at once. Returns the updated rows. */
   assignClass(ids: string[], classId: string | null): Promise<User[]>;
+  /** Hard-delete a user row. References (folders/items/reports) are set null via FK. */
+  deleteUser(id: string): Promise<boolean>;
   listAdminEmails(): Promise<string[]>;
 }
 
@@ -167,6 +169,11 @@ export function createPostgresAuthRepo(sql: SqlTag): AuthRepo {
         where id = any(${ids}::uuid[])
         returning *`;
       return rows.map(mapUser);
+    },
+
+    async deleteUser(id) {
+      const rows = await sql`delete from users where id = ${id} returning id`;
+      return rows.length > 0;
     },
 
     async listAdminEmails() {

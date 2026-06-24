@@ -1,18 +1,20 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { AuthRepo } from "../auth/repo.js";
 import type { ItemsRepo } from "../items/repo.js";
+import type { Storage } from "../storage/s3.js";
 import type { UserRole, UserStatus } from "../types.js";
 import { type Audit, noopAudit } from "../audit/recorder.js";
 
 export interface AdminUserRoutesDeps {
   authRepo: AuthRepo;
   itemsRepo: ItemsRepo;
+  storage: Storage;
   requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   audit?: Audit;
 }
 
 export function registerAdminUserRoutes(app: FastifyInstance, deps: AdminUserRoutesDeps): void {
-  const { authRepo, itemsRepo, requireAdmin } = deps;
+  const { authRepo, itemsRepo, storage, requireAdmin } = deps;
   const audit = deps.audit ?? noopAudit;
 
   // GET /api/admin/users — list all users (admin only)
@@ -107,6 +109,46 @@ export function registerAdminUserRoutes(app: FastifyInstance, deps: AdminUserRou
       if (parts.length) audit.record(req, "user.update", `Konto „${updated.email}": ${parts.join(", ")}`);
 
       return reply.send(updated);
+    },
+  );
+
+  // DELETE /api/admin/users/:id — permanently delete a user (admin only).
+  // Safety gate: only deactivated accounts can be deleted (deactivate first).
+  app.delete<{ Params: { id: string } }>(
+    "/api/admin/users/:id",
+    { preHandler: requireAdmin },
+    async (req, reply) => {
+      const { id } = req.params;
+
+      if (req.user!.id === id) {
+        return reply.code(400).send({ error: "cannot_modify_self" });
+      }
+
+      const user = await authRepo.findUserById(id);
+      if (!user) {
+        return reply.code(404).send({ error: "not found" });
+      }
+      if (user.status !== "disabled") {
+        return reply.code(409).send({ error: "must_deactivate_first" });
+      }
+
+      // Remove the user's still-unapproved uploads (DB rows + S3 objects). Already
+      // approved photos stay with the class; their uploader is set null via FK.
+      const pendingKeys = await itemsRepo.deletePendingByUploader(id);
+      if (pendingKeys.length > 0) {
+        await storage.deleteObjects(
+          pendingKeys.flatMap((k) => [k.s3Key, k.thumbKey]).filter(Boolean),
+        );
+      }
+      await authRepo.deleteUser(id);
+
+      audit.record(
+        req,
+        "user.delete",
+        `Konto „${user.email}" endgültig gelöscht` +
+          (pendingKeys.length > 0 ? ` (${pendingKeys.length} ungeprüfte Uploads entfernt)` : ""),
+      );
+      return reply.send({ ok: true, deletedPending: pendingKeys.length });
     },
   );
 }

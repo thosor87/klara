@@ -430,6 +430,16 @@ export const api = {
     return { user: updated };
   },
 
+  async deleteUser(id: string): Promise<{ ok: boolean; deletedPending?: number; error?: string }> {
+    const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      // "must_deactivate_first" / "cannot_modify_self" surface as a friendly error.
+      return { ok: false, error: data?.error ?? `Fehler ${res.status}` };
+    }
+    return (await res.json()) as { ok: boolean; deletedPending?: number };
+  },
+
   async assignClass(userIds: string[], classId: string | null): Promise<User[]> {
     const res = await fetch(`/api/admin/users/assign-class`, {
       method: "POST",

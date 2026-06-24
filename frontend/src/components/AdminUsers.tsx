@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type User, type ClassOption } from "../api";
 import { DomainsCard } from "./Settings";
 import { AuditLog } from "./AuditLog";
+import { useConfirm } from "./ConfirmDialog";
 
 function statusLabel(status: string): string {
   if (status === "active") return "Aktiv";
@@ -22,12 +23,14 @@ function UserRow({
   user,
   classOptions,
   onUpdated,
+  onDelete,
   selected,
   onToggleSelect,
 }: {
   user: User;
   classOptions: ClassOption[];
   onUpdated: (updated: User) => void;
+  onDelete: (user: User) => void;
   selected: boolean;
   onToggleSelect: (id: string) => void;
 }) {
@@ -140,6 +143,17 @@ function UserRow({
         ) : (
           <button className="btn-xs" onClick={() => patch({ role: "member" })} disabled={busy}>→ Mitglied</button>
         )}
+        {/* Hard delete only after deactivation (status disabled). */}
+        {isDisabled && (
+          <button
+            className="btn-xs btn-xs--danger"
+            onClick={() => onDelete(user)}
+            disabled={busy}
+            title="Konto endgültig löschen"
+          >
+            Löschen
+          </button>
+        )}
       </span>
 
       {selfMsg && <p className="err user-row-msg">Eigenen Account kann man nicht ändern.</p>}
@@ -154,6 +168,7 @@ function UserSection({
   users,
   classOptions,
   onUpdated,
+  onDelete,
   emptyText,
   variant,
 }: {
@@ -162,6 +177,7 @@ function UserSection({
   users: User[];
   classOptions: ClassOption[];
   onUpdated: (u: User) => void;
+  onDelete: (u: User) => void;
   emptyText: string;
   variant: "pending" | "admins" | "members";
 }) {
@@ -256,6 +272,7 @@ function UserSection({
                 user={u}
                 classOptions={classOptions}
                 onUpdated={onUpdated}
+                onDelete={onDelete}
                 selected={selected.has(u.id)}
                 onToggleSelect={toggle}
               />
@@ -276,6 +293,8 @@ export function AdminUsers() {
   const [addForm, setAddForm] = useState({ email: "", role: "member" as "admin" | "member", classId: "" });
   const [addBusy, setAddBusy] = useState(false);
   const [addErr, setAddErr] = useState("");
+  const [delErr, setDelErr] = useState("");
+  const { ask, dialog } = useConfirm();
 
   useEffect(() => {
     Promise.all([api.getUsers(), api.getClassOptions()])
@@ -292,6 +311,32 @@ export function AdminUsers() {
 
   function handleUpdated(updated: User) {
     setUsers((prev) => prev.map((u) => (u.id === updated.id ? { ...updated, uploadCount: u.uploadCount } : u)));
+  }
+
+  async function handleDelete(user: User) {
+    setDelErr("");
+    const pendingNote =
+      (user.uploadCount ?? 0) > 0
+        ? " Noch nicht freigegebene Uploads dieser Person werden mitgelöscht; bereits freigegebene Fotos bleiben in der Klasse (ohne Namenszuordnung)."
+        : "";
+    const ok = await ask({
+      title: "Konto endgültig löschen?",
+      message:
+        `„${user.email}" wird dauerhaft gelöscht und kann nicht wiederhergestellt werden.` + pendingNote,
+      confirmLabel: "Endgültig löschen",
+      danger: true,
+    });
+    if (!ok) return;
+    const res = await api.deleteUser(user.id);
+    if (res.ok) {
+      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+    } else {
+      setDelErr(
+        res.error === "must_deactivate_first"
+          ? "Bitte das Konto zuerst deaktivieren, dann löschen."
+          : "Löschen fehlgeschlagen.",
+      );
+    }
   }
 
   async function handleAdd(e: React.FormEvent) {
@@ -414,6 +459,7 @@ export function AdminUsers() {
             users={pending}
             classOptions={classOptions}
             onUpdated={handleUpdated}
+            onDelete={handleDelete}
             emptyText="Keine offenen Anfragen."
             variant="pending"
           />
@@ -422,6 +468,7 @@ export function AdminUsers() {
             users={admins}
             classOptions={classOptions}
             onUpdated={handleUpdated}
+            onDelete={handleDelete}
             emptyText="Noch keine Admins."
             variant="admins"
           />
@@ -430,17 +477,21 @@ export function AdminUsers() {
             users={members}
             classOptions={classOptions}
             onUpdated={handleUpdated}
+            onDelete={handleDelete}
             emptyText="Noch keine Mitglieder."
             variant="members"
           />
         </div>
       )}
 
+      {delErr && <p className="err" style={{ marginTop: "1rem" }}>{delErr}</p>}
+
       <div className="settings-page" style={{ marginTop: "2rem" }}>
         <DomainsCard />
       </div>
 
       <AuditLog />
+      {dialog}
     </div>
   );
 }

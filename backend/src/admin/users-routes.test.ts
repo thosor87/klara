@@ -4,6 +4,7 @@ import fastifyCookie from "@fastify/cookie";
 import type { User } from "../types.js";
 import type { AuthRepo } from "../auth/repo.js";
 import type { ItemsRepo } from "../items/repo.js";
+import type { Storage } from "../storage/s3.js";
 import { registerAdminUserRoutes } from "./users-routes.js";
 
 // ---------------------------------------------------------------------------
@@ -50,6 +51,7 @@ function fakeAuthRepo(over: Partial<AuthRepo> = {}): AuthRepo {
     markTokenUsed: async () => {},
     incrementCodeAttempts: async () => {},
     countRecentLoginTokens: async () => 0,
+    deleteUser: async () => true,
     listUsers: async () => [],
     upsertActiveUser: async (email, role) => ({
       id: "u-new",
@@ -83,11 +85,28 @@ function fakeItemsRepo(over: Partial<ItemsRepo> = {}): ItemsRepo {
     purgeTrashed: async () => [],
     trashItemById: async () => false,
     uploadCountsByUser: async () => ({}),
+    deletePendingByUploader: async () => [],
     ...over,
   };
 }
 
-async function makeApp(authRepo: AuthRepo, user: User | null, itemsRepo?: ItemsRepo) {
+function fakeStorage(over: Partial<Storage> = {}): Storage {
+  return {
+    presignPut: async () => "",
+    presignGet: async () => "",
+    headExists: async () => true,
+    head: async () => null,
+    deleteObjects: async () => {},
+    ...over,
+  } as Storage;
+}
+
+async function makeApp(
+  authRepo: AuthRepo,
+  user: User | null,
+  itemsRepo?: ItemsRepo,
+  storage?: Storage,
+) {
   const app = Fastify();
   await app.register(fastifyCookie, { secret: "test-secret" });
 
@@ -103,7 +122,12 @@ async function makeApp(authRepo: AuthRepo, user: User | null, itemsRepo?: ItemsR
     req.user = user;
   };
 
-  registerAdminUserRoutes(app, { authRepo, itemsRepo: itemsRepo ?? fakeItemsRepo(), requireAdmin });
+  registerAdminUserRoutes(app, {
+    authRepo,
+    itemsRepo: itemsRepo ?? fakeItemsRepo(),
+    storage: storage ?? fakeStorage(),
+    requireAdmin,
+  });
   await app.ready();
   return app;
 }
@@ -385,5 +409,75 @@ describe("POST /api/admin/users/assign-class", () => {
       payload: { userIds: ["u-1"], classId: "class-a" },
     });
     expect(res.statusCode).toBe(403);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/admin/users/:id
+// ---------------------------------------------------------------------------
+
+const DISABLED: User = { ...MEMBER, id: "u-disabled", status: "disabled" };
+
+describe("DELETE /api/admin/users/:id", () => {
+  it("member → 403", async () => {
+    const app = await makeApp(fakeAuthRepo(), MEMBER);
+    const res = await app.inject({ method: "DELETE", url: "/api/admin/users/u-x" });
+    expect(res.statusCode).toBe(403);
+  });
+
+  it("deleting own account → 400 cannot_modify_self", async () => {
+    let deleted = false;
+    const repo = fakeAuthRepo({ deleteUser: async () => { deleted = true; return true; } });
+    const app = await makeApp(repo, ADMIN);
+    const res = await app.inject({ method: "DELETE", url: `/api/admin/users/${ADMIN.id}` });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "cannot_modify_self" });
+    expect(deleted).toBe(false);
+  });
+
+  it("unknown id → 404", async () => {
+    const repo = fakeAuthRepo({ findUserById: async () => null });
+    const app = await makeApp(repo, ADMIN);
+    const res = await app.inject({ method: "DELETE", url: "/api/admin/users/ghost" });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("still-active (not deactivated) user → 409 must_deactivate_first", async () => {
+    let deleted = false;
+    const repo = fakeAuthRepo({
+      findUserById: async () => MEMBER, // status: active
+      deleteUser: async () => { deleted = true; return true; },
+    });
+    const app = await makeApp(repo, ADMIN);
+    const res = await app.inject({ method: "DELETE", url: `/api/admin/users/${MEMBER.id}` });
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toEqual({ error: "must_deactivate_first" });
+    expect(deleted).toBe(false);
+  });
+
+  it("disabled user → 200, deletes pending uploads (DB + S3) then the user", async () => {
+    let deletedId: string | undefined;
+    let purgedFor: string | undefined;
+    let s3Deleted: string[] | undefined;
+    const repo = fakeAuthRepo({
+      findUserById: async () => DISABLED,
+      deleteUser: async (id) => { deletedId = id; return true; },
+    });
+    const itemsRepo = fakeItemsRepo({
+      deletePendingByUploader: async (uid) => {
+        purgedFor = uid;
+        return [{ s3Key: "items/a/source", thumbKey: "items/a/thumb" }];
+      },
+    });
+    const storage = fakeStorage({ deleteObjects: async (keys) => { s3Deleted = keys; } });
+    const app = await makeApp(repo, ADMIN, itemsRepo, storage);
+
+    const res = await app.inject({ method: "DELETE", url: `/api/admin/users/${DISABLED.id}` });
+
+    expect(res.statusCode).toBe(200);
+    expect(purgedFor).toBe(DISABLED.id);
+    expect(s3Deleted).toEqual(["items/a/source", "items/a/thumb"]);
+    expect(deletedId).toBe(DISABLED.id);
+    expect((res.json() as { ok: boolean; deletedPending: number }).deletedPending).toBe(1);
   });
 });

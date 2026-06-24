@@ -55,6 +55,8 @@ export interface ItemsRepo {
   restore(id: string): Promise<boolean>;
   countPending(): Promise<number>;
   purgeTrashed(before: Date): Promise<TrashedS3Keys[]>;
+  /** Delete a user's still-unapproved (pending) uploads, returning their S3 keys. */
+  deletePendingByUploader(userId: string): Promise<TrashedS3Keys[]>;
   /** Trash any item by id (regardless of current status). Used when a report is deleted. */
   trashItemById(id: string): Promise<boolean>;
   /** Count of all items grouped by uploaded_by. */
@@ -204,6 +206,14 @@ export function createPostgresItemsRepo(sql: SqlTag): ItemsRepo {
       const rows = await sql<{ s3_key: string; thumb_key: string }[]>`
         DELETE FROM items
         WHERE status = 'trashed' AND trashed_at < ${before}
+        RETURNING s3_key, thumb_key`;
+      return rows.map((r) => ({ s3Key: r.s3_key, thumbKey: r.thumb_key }));
+    },
+
+    async deletePendingByUploader(userId) {
+      const rows = await sql<{ s3_key: string; thumb_key: string }[]>`
+        DELETE FROM items
+        WHERE status = 'pending' AND uploaded_by = ${userId}
         RETURNING s3_key, thumb_key`;
       return rows.map((r) => ({ s3Key: r.s3_key, thumbKey: r.thumb_key }));
     },

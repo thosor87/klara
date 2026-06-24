@@ -160,7 +160,7 @@ export async function defaultRuntime(): Promise<BuildOptions> {
       registerFolderRoutes(app, { foldersRepo, itemsRepo, documentsRepo, storage, requireUser, requireAdmin, audit });
       registerDocumentRoutes(app, { documentsRepo, foldersRepo, storage, maxDocumentBytes: config.maxDocumentBytes, requireUser, requireAdmin, audit });
       registerItemRoutes(app, { itemsService, requireUser, requireAdmin, audit });
-      registerAdminUserRoutes(app, { authRepo, itemsRepo, requireAdmin, audit });
+      registerAdminUserRoutes(app, { authRepo, itemsRepo, storage, requireAdmin, audit });
       registerReportRoutes(app, { reportsService, requireUser, requireAdmin, audit });
       registerTrashRoutes(app, {
         itemsRepo, storage, trashRetentionDays: config.trashRetentionDays, requireAdmin, audit,
