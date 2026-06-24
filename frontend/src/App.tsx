@@ -171,7 +171,13 @@ function AuthBoundary() {
   }, []);
 
   async function logout() {
-    await api.logout();
+    // Always clear the local session, even if the server call fails — a logout
+    // must never get stuck on a network/40x error.
+    try {
+      await api.logout();
+    } catch {
+      /* ignore */
+    }
     setMe(null);
     setStage("email");
     navigate("/", { replace: true });

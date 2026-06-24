@@ -139,7 +139,13 @@ export const api = {
     return data?.user ?? null;
   },
   async logout(): Promise<void> {
-    const res = await fetch("/api/auth/logout", { method: "POST" });
+    // Empty JSON body + content-type: Fastify 415s a bodyless POST (no parser
+    // for a missing content-type). Matches every other POST call here.
+    const res = await fetch("/api/auth/logout", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
     if (!res.ok) throw new Error(`logout failed: ${res.status}`);
   },
 
@@ -390,7 +396,11 @@ export const api = {
     return data ?? [];
   },
   async restoreTrashItem(itemId: string): Promise<{ ok: boolean }> {
-    const res = await fetch(`/api/admin/trash/${itemId}/restore`, { method: "POST" });
+    const res = await fetch(`/api/admin/trash/${itemId}/restore`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
