@@ -315,14 +315,12 @@ export function AdminUsers() {
 
   async function handleDelete(user: User) {
     setDelErr("");
-    const pendingNote =
-      (user.uploadCount ?? 0) > 0
-        ? " Noch nicht freigegebene Uploads dieser Person werden mitgelöscht; bereits freigegebene Fotos bleiben in der Klasse (ohne Namenszuordnung)."
-        : "";
     const ok = await ask({
       title: "Konto endgültig löschen?",
       message:
-        `„${user.email}" wird dauerhaft gelöscht und kann nicht wiederhergestellt werden.` + pendingNote,
+        `„${user.email}" wird dauerhaft gelöscht und kann nicht wiederhergestellt werden. ` +
+        "Noch nicht freigegebene Uploads dieser Person werden mitgelöscht; bereits freigegebene " +
+        "Fotos bleiben in der Klasse (ohne Namenszuordnung).",
       confirmLabel: "Endgültig löschen",
       danger: true,
     });
