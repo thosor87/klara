@@ -3,7 +3,7 @@ import fastifyStatic from "@fastify/static";
 import fastifyCookie from "@fastify/cookie";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { config } from "./config.js";
 import { sql } from "./db.js";
 import { createAuthService } from "./auth/service.js";
@@ -53,17 +53,17 @@ export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance
   if (opts.registerRoutes) await opts.registerRoutes(app);
 
   if (existsSync(frontendDist)) {
+    // Read the SPA entry once and serve it ourselves (below) so we fully control
+    // its Cache-Control — @fastify/static's `send` otherwise stamps max-age=0 and
+    // ignores our override, which on a CDN leaves stale index.html pointing at
+    // deleted hashed assets (→ "MIME type text/html" module errors).
+    const indexHtml = readFileSync(path.join(frontendDist, "index.html"), "utf8");
     await app.register(fastifyStatic, {
       root: frontendDist,
+      index: false, // we serve index.html via the not-found handler with our own headers
       setHeaders: (res, filePath) => {
-        if (filePath.endsWith("index.html")) {
-          // The HTML entry must never be cached: a new deploy ships new
-          // content-hashed asset names, and a stale index.html would keep
-          // pointing at the old ones. Always revalidate.
-          res.setHeader("Cache-Control", "no-cache, must-revalidate");
-        } else if (filePath.includes(`${path.sep}assets${path.sep}`)) {
-          // Vite content-hashes these filenames, so the name IS the cache-buster:
-          // safe to cache forever and never revalidate.
+        if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+          // Vite content-hashes these filenames, so the name IS the cache-buster.
           res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
         }
       },
@@ -73,9 +73,11 @@ export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance
         reply.code(404).send({ error: "not_found" });
         return;
       }
-      // SPA fallback also serves index.html → keep it uncached.
-      reply.header("Cache-Control", "no-cache, must-revalidate");
-      reply.type("text/html").sendFile("index.html");
+      // SPA entry (incl. "/") — never cache, so new deploys' hashed asset names load.
+      reply
+        .header("Cache-Control", "no-cache, must-revalidate")
+        .type("text/html")
+        .send(indexHtml);
     });
   }
 
