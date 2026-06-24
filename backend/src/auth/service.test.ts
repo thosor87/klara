@@ -38,6 +38,10 @@ class FakeRepo implements AuthRepo {
   async incrementCodeAttempts(id: string) {
     const t = this.tokens.find((x) => x.id === id); if (t) t.attempts++;
   }
+  async countRecentLoginTokens(email: string, _since: Date) {
+    // Fake: every stored token counts as "recent" (tests create them all "now").
+    return this.tokens.filter((t) => t.email === email).length;
+  }
   async listUsers() { return [...this.users]; }
   async upsertActiveUser(email: string, role: UserRole): Promise<User> {
     const existing = this.users.find((u) => u.email === email);
@@ -96,6 +100,17 @@ describe("requestLogin", () => {
     expect(mailer.sent[0].code).toMatch(/^\d{6}$/);
     expect(mailer.sent[0].link).toContain("https://klara.test/api/auth/link?token=");
     expect(repo.tokens).toHaveLength(1);
+  });
+
+  it("drosselt Login-Mails: nach 3 Mails kommt keine weitere, Antwort bleibt code_sent", async () => {
+    repo.users.push({ id: "u1", email: "a@grundschule-xy.de", role: "member",
+      status: "active", classId: null, createdAt: "x" });
+    const svc = makeService(repo, mailer);
+    for (let i = 0; i < 5; i++) {
+      const outcome = await svc.requestLogin("a@grundschule-xy.de");
+      expect(outcome).toBe("code_sent"); // gleiche Antwort, kein Enumeration-Signal
+    }
+    expect(mailer.sent).toHaveLength(3); // gedrosselt auf MAX_LOGIN_MAILS_PER_WINDOW
   });
 
   it("neuer Domain-Nutzer wird pending angelegt, KEINE Mail → pending", async () => {

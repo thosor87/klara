@@ -11,12 +11,26 @@ function required(name: string): string {
   return v;
 }
 
+const isProd = (process.env.NODE_ENV ?? "development") === "production";
+
+/**
+ * A secret that MUST be set in production: in prod we fail fast instead of
+ * silently falling back to a known dev value (which would let anyone forge
+ * signed session cookies). Outside prod the dev fallback is fine.
+ */
+function prodSecret(name: string, devFallback: string): string {
+  const v = process.env[name];
+  if (v) return v;
+  if (isProd) throw new Error(`Missing required secret in production: ${name}`);
+  return devFallback;
+}
+
 export const config = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   databaseUrl: process.env.DATABASE_URL ?? "",
   allowedDomains: parseAllowedDomains(process.env.ALLOWED_EMAIL_DOMAINS),
   initialAdminEmail: (process.env.INITIAL_ADMIN_EMAIL ?? "").trim().toLowerCase() || null,
-  sessionSecret: process.env.SESSION_SECRET ?? "dev-secret",
+  sessionSecret: prodSecret("SESSION_SECRET", "dev-secret"),
   sessionMaxDays: Number(process.env.SESSION_MAX_DAYS ?? 30),
   tokenTtlMinutes: Number(process.env.LOGIN_TOKEN_TTL_MINUTES ?? 15),
   appBaseUrl: process.env.APP_BASE_URL ?? "http://localhost:3000",

@@ -16,6 +16,9 @@ export interface AuthServiceDeps {
 /** Was dem Nutzer nach einem Login-Request zurückgemeldet wird. */
 export type RequestLoginOutcome = "code_sent" | "pending" | "denied";
 
+/** Max login mails per email within one TTL window (anti mail-bombing). */
+export const MAX_LOGIN_MAILS_PER_WINDOW = 3;
+
 export interface AuthService {
   requestLogin(rawEmail: string): Promise<RequestLoginOutcome>;
   verifyCode(rawEmail: string, code: string): Promise<User | null>;
@@ -60,7 +63,13 @@ export function createAuthService(deps: AuthServiceDeps): AuthService {
         email, allowedDomains, existingUser: existing ? { status: existing.status } : null,
       });
       if (action === "send_login") {
-        await issueToken(email);
+        // Rate limit: at most a few login mails per email within the TTL window
+        // (anti mail-bombing). Throttled requests return the same outcome — no
+        // enumeration signal — but send no further mail.
+        const since = new Date(Date.now() - tokenTtlMinutes * 60_000);
+        if ((await repo.countRecentLoginTokens(email, since)) < MAX_LOGIN_MAILS_PER_WINDOW) {
+          await issueToken(email);
+        }
         return "code_sent";
       }
       if (action === "create_pending") {

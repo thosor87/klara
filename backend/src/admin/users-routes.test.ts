@@ -49,6 +49,7 @@ function fakeAuthRepo(over: Partial<AuthRepo> = {}): AuthRepo {
     findActiveTokenByLinkHash: async () => null,
     markTokenUsed: async () => {},
     incrementCodeAttempts: async () => {},
+    countRecentLoginTokens: async () => 0,
     listUsers: async () => [],
     upsertActiveUser: async (email, role) => ({
       id: "u-new",

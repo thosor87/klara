@@ -20,6 +20,8 @@ export interface AuthRepo {
   findActiveTokenByLinkHash(linkHash: string): Promise<LoginTokenRow | null>;
   markTokenUsed(id: string): Promise<void>;
   incrementCodeAttempts(id: string): Promise<void>;
+  /** How many login tokens were issued for this email since `since` (rate limiting). */
+  countRecentLoginTokens(email: string, since: Date): Promise<number>;
   listUsers(): Promise<User[]>;
   upsertActiveUser(email: string, role: UserRole): Promise<User>;
   updateUser(
@@ -113,6 +115,13 @@ export function createPostgresAuthRepo(sql: SqlTag): AuthRepo {
 
     async incrementCodeAttempts(id) {
       await sql`update login_tokens set attempts = attempts + 1 where id = ${id}`;
+    },
+
+    async countRecentLoginTokens(email, since) {
+      const rows = await sql<{ count: string }[]>`
+        select count(*)::int as count from login_tokens
+        where email = ${email} and created_at > ${since}`;
+      return Number(rows[0]?.count ?? 0);
     },
 
     async listUsers() {

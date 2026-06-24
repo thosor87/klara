@@ -53,6 +53,35 @@ export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance
 
   await app.register(fastifyCookie, { secret: config.sessionSecret });
 
+  // Security headers on every response. Set here (not in vercel.json) because all
+  // routes rewrite to this function, where Vercel's static `headers` don't reliably
+  // apply. The CSP allows our own origin, inline styles (React style props), Google
+  // Fonts, and the S3 bucket for images/videos/uploads; everything else is denied.
+  const s3Origin = config.s3Bucket
+    ? `https://${config.s3Bucket}.s3.${config.s3Region}.amazonaws.com`
+    : "";
+  const csp = [
+    "default-src 'self'",
+    `img-src 'self' data: blob: ${s3Origin}`.trim(),
+    `media-src 'self' blob: ${s3Origin}`.trim(),
+    `connect-src 'self' ${s3Origin}`.trim(),
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join("; ");
+  app.addHook("onSend", async (_req, reply, payload) => {
+    reply.header("Content-Security-Policy", csp);
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("X-Frame-Options", "DENY");
+    reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
+    reply.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    return payload;
+  });
+
   app.get("/healthz", async () => ({ ok: true }));
 
   if (opts.registerRoutes) await opts.registerRoutes(app);

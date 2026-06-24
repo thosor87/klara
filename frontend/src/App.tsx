@@ -80,9 +80,11 @@ function LoginGate({ onLoggedIn }: { onLoggedIn: (me: Me) => void }) {
     e.preventDefault(); setBusy(true); setErr(""); setNotice("");
     try {
       const outcome = await api.requestLogin(email);
-      if (outcome === "code_sent") setStage("code");
-      else if (outcome === "pending") setStage("pending");
-      else setNotice("Diese Adresse ist nicht freigeschaltet. Wenn das ein Fehler ist, wende dich an die Lehrkraft.");
+      // "denied" and "code_sent" lead to the SAME screen on purpose: we don't reveal
+      // whether an address is a registered account (no e-mail enumeration). A genuinely
+      // unauthorized address simply never receives a code.
+      if (outcome === "pending") setStage("pending");
+      else setStage("code");
     } catch {
       setErr("Anfrage fehlgeschlagen. Bitte erneut versuchen.");
     } finally {
@@ -112,8 +114,8 @@ function LoginGate({ onLoggedIn }: { onLoggedIn: (me: Me) => void }) {
       {stage === "code" ? (
         <main className="card auth-card">
           <h1 className="auth-title">KlaRa</h1>
-          <p className="muted">Wir haben dir eine Mail mit einem 6-stelligen Code geschickt.
-            Gib ihn hier ein (oder klick den Link in der Mail).</p>
+          <p className="muted">Wenn deine Adresse freigeschaltet ist, kommt gleich eine Mail mit
+            einem 6-stelligen Code. Gib ihn hier ein (oder klick den Link in der Mail).</p>
           <form onSubmit={submitCode}>
             <input inputMode="numeric" autoComplete="one-time-code" placeholder="6-stelliger Code"
               value={code} onChange={(e) => setCode(e.target.value)} />

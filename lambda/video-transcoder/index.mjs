@@ -39,8 +39,11 @@ export const handler = async (event) => {
       writeFileSync(src, Buffer.from(await obj.Body.transformToByteArray()));
 
       // 720p cap on the longer edge, even dimensions, AAC audio, faststart for web.
+      // -map_metadata -1 / -map_chapters -1 strip ALL source metadata (incl. GPS
+      // location) so the published video carries no privacy-sensitive tags.
       run(FFMPEG, [
         "-y", "-i", src,
+        "-map_metadata", "-1", "-map_chapters", "-1",
         "-vf", "scale=1280:1280:force_original_aspect_ratio=decrease:force_divisible_by=2",
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
         "-c:a", "aac", "-b:a", "128k",
