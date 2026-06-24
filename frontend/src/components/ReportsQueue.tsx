@@ -18,8 +18,6 @@ export function ReportsQueue() {
   const [error, setError] = useState(false);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState<string | null>(null); // id of the item being acted upon
-  const [answerFor, setAnswerFor] = useState<string | null>(null);
-  const [answerText, setAnswerText] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   function load() {
@@ -44,22 +42,6 @@ export function ReportsQueue() {
       load();
     } catch {
       setMsg("Fehler beim Ignorieren.");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function handleAnswer(id: string) {
-    if (!answerText.trim()) return;
-    setBusy(id); setMsg("");
-    try {
-      await api.patchReport(id, "answer", answerText.trim());
-      setMsg("Antwort gespeichert.");
-      setAnswerFor(null);
-      setAnswerText("");
-      load();
-    } catch {
-      setMsg("Fehler beim Antworten.");
     } finally {
       setBusy(null);
     }
@@ -139,18 +121,11 @@ export function ReportsQueue() {
                       Ignorieren
                     </button>
                     <button
-                      className="btn-inline btn-secondary"
-                      disabled={busy === report.id}
-                      onClick={() => { setAnswerFor(report.id); setAnswerText(""); }}
-                    >
-                      Antworten
-                    </button>
-                    <button
                       className="btn-inline btn-reject"
                       disabled={busy === report.id}
                       onClick={() => setConfirmDelete(report.id)}
                     >
-                      Löschen
+                      Foto entfernen
                     </button>
                   </>
                 )}
@@ -160,40 +135,10 @@ export function ReportsQueue() {
                     disabled={busy === report.id}
                     onClick={() => setConfirmDelete(report.id)}
                   >
-                    Löschen
+                    Foto entfernen
                   </button>
                 )}
               </div>
-
-              {/* Inline answer form */}
-              {answerFor === report.id && (
-                <div className="report-answer-form">
-                  <textarea
-                    className="report-reason"
-                    placeholder="Antwort an den Melder …"
-                    value={answerText}
-                    onChange={(e) => setAnswerText(e.target.value)}
-                    rows={3}
-                    autoFocus
-                  />
-                  <div className="dialog-actions">
-                    <button
-                      type="button"
-                      className="btn-ghost-dark btn-inline"
-                      onClick={() => setAnswerFor(null)}
-                    >
-                      Abbrechen
-                    </button>
-                    <button
-                      className="btn-inline btn-approve"
-                      disabled={busy === report.id || !answerText.trim()}
-                      onClick={() => handleAnswer(report.id)}
-                    >
-                      Speichern
-                    </button>
-                  </div>
-                </div>
-              )}
 
               {/* Inline delete confirm */}
               {confirmDelete === report.id && (
