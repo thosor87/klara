@@ -39,6 +39,8 @@ export const config = {
   trashRetentionDays: Number(process.env.TRASH_RETENTION_DAYS ?? 30),
   // Hard server-side cap on uploaded video size (default 150 MB). Enforced in confirmUpload.
   maxVideoBytes: Number(process.env.MAX_VIDEO_BYTES ?? 157_286_400),
+  // Hard server-side cap on an album document (default 25 MB). Max 10 docs per album.
+  maxDocumentBytes: Number(process.env.MAX_DOCUMENT_BYTES ?? 26_214_400),
 };
 
 export { required };

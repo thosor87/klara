@@ -14,6 +14,8 @@ import { makeGuards } from "./auth/guard.js";
 import { createS3Storage } from "./storage/s3.js";
 import { createPostgresFoldersRepo } from "./folders/repo.js";
 import { registerFolderRoutes } from "./folders/routes.js";
+import { createPostgresDocumentsRepo } from "./documents/repo.js";
+import { registerDocumentRoutes } from "./documents/routes.js";
 import { createPostgresItemsRepo } from "./items/repo.js";
 import { createItemsService } from "./items/service.js";
 import { registerItemRoutes } from "./items/routes.js";
@@ -105,6 +107,7 @@ export async function defaultRuntime(): Promise<BuildOptions> {
 
   const storage = createS3Storage();
   const foldersRepo = createPostgresFoldersRepo(sql);
+  const documentsRepo = createPostgresDocumentsRepo(sql);
   const itemsRepo = createPostgresItemsRepo(sql);
   const itemsService = createItemsService({ itemsRepo, foldersRepo, storage, maxVideoBytes: config.maxVideoBytes });
   const reportsRepo = createPostgresReportsRepo(sql);
@@ -120,6 +123,7 @@ export async function defaultRuntime(): Promise<BuildOptions> {
         isProd: config.nodeEnv === "production",
       });
       registerFolderRoutes(app, { foldersRepo, itemsRepo, storage, requireUser, requireAdmin });
+      registerDocumentRoutes(app, { documentsRepo, foldersRepo, storage, maxDocumentBytes: config.maxDocumentBytes, requireUser, requireAdmin });
       registerItemRoutes(app, { itemsService, requireUser, requireAdmin });
       registerAdminUserRoutes(app, { authRepo, itemsRepo, requireAdmin });
       registerReportRoutes(app, { reportsService, requireUser, requireAdmin });
