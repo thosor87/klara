@@ -169,6 +169,14 @@ async function makeApp(
   registerFolderRoutes(app, {
     foldersRepo,
     itemsRepo: itemsRepo ?? fakeItemsRepo(),
+    documentsRepo: {
+      listByFolder: async () => [],
+      countByFolder: async () => 0,
+      countsByFolder: async () => new Map(),
+      insert: async () => ({ id: "d", folderId: "f", filename: "x", contentType: "x", sizeBytes: 0, s3Key: "x", uploadedBy: null, createdAt: "x" }),
+      findById: async () => null,
+      deleteById: async () => null,
+    },
     storage: storage ?? fakeStorage(),
     requireUser,
     requireAdmin,

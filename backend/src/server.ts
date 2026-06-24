@@ -122,7 +122,7 @@ export async function defaultRuntime(): Promise<BuildOptions> {
         sessionMaxDays: config.sessionMaxDays,
         isProd: config.nodeEnv === "production",
       });
-      registerFolderRoutes(app, { foldersRepo, itemsRepo, storage, requireUser, requireAdmin });
+      registerFolderRoutes(app, { foldersRepo, itemsRepo, documentsRepo, storage, requireUser, requireAdmin });
       registerDocumentRoutes(app, { documentsRepo, foldersRepo, storage, maxDocumentBytes: config.maxDocumentBytes, requireUser, requireAdmin });
       registerItemRoutes(app, { itemsService, requireUser, requireAdmin });
       registerAdminUserRoutes(app, { authRepo, itemsRepo, requireAdmin });

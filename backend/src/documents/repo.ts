@@ -17,6 +17,8 @@ export interface DocumentRow {
 export interface DocumentsRepo {
   listByFolder(folderId: string): Promise<DocumentRow[]>;
   countByFolder(folderId: string): Promise<number>;
+  /** folderId → document count, for all folders at once. */
+  countsByFolder(): Promise<Map<string, number>>;
   insert(data: {
     id: string;
     folderId: string;
@@ -55,6 +57,11 @@ export function createPostgresDocumentsRepo(sql: SqlTag): DocumentsRepo {
       const rows = await sql<{ count: string }[]>`
         SELECT count(*)::int AS count FROM documents WHERE folder_id = ${folderId}`;
       return Number(rows[0]?.count ?? 0);
+    },
+    async countsByFolder() {
+      const rows = await sql<{ folder_id: string; count: string }[]>`
+        SELECT folder_id, count(*)::int AS count FROM documents GROUP BY folder_id`;
+      return new Map(rows.map((r) => [r.folder_id, Number(r.count)]));
     },
     async insert(data) {
       const rows = await sql<Record<string, unknown>[]>`

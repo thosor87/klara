@@ -1310,3 +1310,17 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
 .folder-docs-name { font-weight: 600; color: var(--ink); flex: 1; min-width: 0; word-break: break-word; }
 .folder-docs-size { font-size: .74rem; flex: 0 0 auto; }
 .folder-docs-dl { flex: 0 0 auto; color: var(--purple); text-decoration: none; font-weight: 800; font-size: 1rem; padding: 0 .25rem; }
+
+/* Compact "has documents" badge in the album row (admin list) */
+.folder-doc-badge {
+  display: inline-flex; align-items: center; gap: .25rem;
+  font-size: .8rem; font-weight: 600; color: var(--purple);
+  background: var(--purple-tint); border-radius: 999px; padding: .1rem .5rem;
+}
+/* Edit dialog: photo/video upload + document manager block */
+.admin-folder-edit-extras {
+  margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--purple-line);
+  display: flex; flex-direction: column; gap: .9rem;
+}
+.folder-photo-upload { display: flex; align-items: center; gap: .7rem; }
+.admin-folder-edit-extras .folder-docs { margin-top: 0; padding-top: 0; border-top: none; }

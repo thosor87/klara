@@ -45,6 +45,7 @@ function fakeDocumentsRepo(over: Partial<DocumentsRepo> = {}): DocumentsRepo {
   return {
     listByFolder: async () => [],
     countByFolder: async () => 0,
+    countsByFolder: async () => new Map(),
     insert: async (d) => ({ ...DOC, ...d, uploadedBy: d.uploadedBy }),
     findById: async () => null,
     deleteById: async () => ({ s3Key: "documents/d1" }),

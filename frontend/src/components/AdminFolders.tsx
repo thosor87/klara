@@ -5,6 +5,7 @@ import { formatDateRange, toDateInput } from "../dates";
 import { Trash } from "./Trash";
 import { useConfirm } from "./ConfirmDialog";
 import { formatBytes } from "./DocumentList";
+import { UploadDialog } from "./UploadDialog";
 
 type OutletCtx = { me?: Me };
 
@@ -167,7 +168,7 @@ function FolderFormFields({
 }
 
 /** Per-album document manager (admin): list, upload (≤10), delete. */
-function FolderDocuments({ folderId }: { folderId: string }) {
+function FolderDocuments({ folderId, onChanged }: { folderId: string; onChanged?: () => void }) {
   const [docs, setDocs] = useState<AlbumDocument[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -194,6 +195,7 @@ function FolderDocuments({ folderId }: { folderId: string }) {
       if (!put.ok) throw new Error(`upload ${put.status}`);
       await api.confirmDocument(folderId, docId, file.name, ct);
       load();
+      onChanged?.();
     } catch (e: any) {
       const m = String(e?.message ?? "");
       setErr(
@@ -217,6 +219,7 @@ function FolderDocuments({ folderId }: { folderId: string }) {
     try {
       await api.deleteDocument(doc.id);
       setDocs((prev) => prev.filter((d) => d.id !== doc.id));
+      onChanged?.();
     } catch {
       setErr("Löschen fehlgeschlagen.");
     }
@@ -264,6 +267,7 @@ function FolderRow({
   onMove,
   onPickCover,
   onDeleted,
+  onDocsChanged,
 }: {
   folder: Folder;
   classOptions: ClassOption[];
@@ -273,8 +277,10 @@ function FolderRow({
   onMove: (id: string, direction: "up" | "down") => void;
   onPickCover: (folder: Folder) => void;
   onDeleted: (id: string) => void;
+  onDocsChanged: () => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
   const [form, setForm] = useState<FormState>({
     name: folder.name,
     startDate: toDateInput(folder.startDate),
@@ -356,6 +362,24 @@ function FolderRow({
             </button>
           </div>
         </form>
+
+        <div className="admin-folder-edit-extras">
+          <div className="folder-photo-upload">
+            <span className="folder-docs-title">Fotos & Videos</span>
+            <button type="button" className="btn-xs" onClick={() => setShowUpload(true)}>
+              + Hochladen
+            </button>
+          </div>
+          <FolderDocuments folderId={folder.id} onChanged={onDocsChanged} />
+        </div>
+
+        {showUpload && (
+          <UploadDialog
+            folderId={folder.id}
+            onClose={() => setShowUpload(false)}
+            onUploaded={onDocsChanged}
+          />
+        )}
       </li>
     );
   }
@@ -391,6 +415,14 @@ function FolderRow({
           {folder.enabled ? "Aktiv" : "Deaktiviert"}
         </span>
         <span className="muted admin-folder-meta">{folder.itemCount} Fotos</span>
+        {folder.documentCount ? (
+          <span className="folder-doc-badge" title={`${folder.documentCount} Dokument${folder.documentCount !== 1 ? "e" : ""}`}>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+            </svg>
+            {folder.documentCount}
+          </span>
+        ) : null}
       </div>
       <div className="admin-folder-actions">
         <button className="btn-secondary" style={{ width: "auto", margin: 0 }} onClick={() => setEditing(true)}>
@@ -419,7 +451,6 @@ function FolderRow({
           </button>
         )}
       </div>
-      <FolderDocuments folderId={folder.id} />
       {err && <p className="err">{err}</p>}
       {confirmDialog}
     </li>
@@ -635,6 +666,7 @@ export function AdminFolders() {
             onMove={handleMove}
             onPickCover={setCoverFor}
             onDeleted={(id) => setFolders((prev) => prev.filter((f) => f.id !== id))}
+            onDocsChanged={() => { reload().catch(() => {}); }}
           />
         ))}
       </ul>

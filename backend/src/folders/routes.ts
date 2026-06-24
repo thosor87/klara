@@ -1,18 +1,20 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { FoldersRepo } from "./repo.js";
 import type { ItemsRepo } from "../items/repo.js";
+import type { DocumentsRepo } from "../documents/repo.js";
 import type { Storage } from "../storage/s3.js";
 
 export interface FolderRoutesDeps {
   foldersRepo: FoldersRepo;
   itemsRepo: ItemsRepo;
+  documentsRepo: DocumentsRepo;
   storage: Storage;
   requireUser: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
 }
 
 export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDeps): void {
-  const { foldersRepo, itemsRepo, storage, requireUser, requireAdmin } = deps;
+  const { foldersRepo, itemsRepo, documentsRepo, storage, requireUser, requireAdmin } = deps;
 
   // GET /api/folders — members see only enabled, admins see all
   app.get(
@@ -25,6 +27,7 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
           : await foldersRepo.listForClass(req.user!.classId);
 
       const counts = await foldersRepo.itemCounts();
+      const docCounts = await documentsRepo.countsByFolder();
 
       const result = await Promise.all(
         folders.map(async (f) => {
@@ -47,6 +50,7 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
             coverItemId: f.coverItemId,
             coverThumbUrl,
             itemCount: counts.get(f.id) ?? 0,
+            documentCount: docCounts.get(f.id) ?? 0,
             classIds: f.classIds,
           };
         }),
