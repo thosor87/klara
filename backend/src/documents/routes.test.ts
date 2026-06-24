@@ -49,6 +49,7 @@ function fakeDocumentsRepo(over: Partial<DocumentsRepo> = {}): DocumentsRepo {
     insert: async (d) => ({ ...DOC, ...d, uploadedBy: d.uploadedBy }),
     findById: async () => null,
     deleteById: async () => ({ s3Key: "documents/d1" }),
+    deleteByFolder: async () => [],
     ...over,
   };
 }

@@ -212,8 +212,18 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
       if (ids.length > 0) {
         await itemsRepo.setStatusTrashed(ids);
       }
+      // Documents have no Papierkorb → delete them permanently (rows + S3 objects).
+      const docs = await documentsRepo.deleteByFolder(id);
+      if (docs.length > 0) {
+        await storage.deleteObjects(docs.map((d) => d.s3Key));
+      }
       await foldersRepo.softDelete(id);
-      audit.record(req, "folder.delete", `Album „${folder.name}" gelöscht (${ids.length} Foto/Videos → Papierkorb)`);
+      audit.record(
+        req,
+        "folder.delete",
+        `Album „${folder.name}" gelöscht (${ids.length} Foto/Videos → Papierkorb` +
+          (docs.length > 0 ? `, ${docs.length} Dokument(e) endgültig gelöscht)` : ")"),
+      );
       return reply.code(204).send();
     },
   );

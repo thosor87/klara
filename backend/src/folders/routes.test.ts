@@ -142,6 +142,7 @@ async function makeApp(
   user: User | null,
   itemsRepo?: ItemsRepo,
   storage?: Storage,
+  documentsRepo?: import("../documents/repo.js").DocumentsRepo,
 ) {
   const app = Fastify();
   await app.register(fastifyCookie, { secret: "test-secret" });
@@ -170,13 +171,14 @@ async function makeApp(
   registerFolderRoutes(app, {
     foldersRepo,
     itemsRepo: itemsRepo ?? fakeItemsRepo(),
-    documentsRepo: {
+    documentsRepo: documentsRepo ?? {
       listByFolder: async () => [],
       countByFolder: async () => 0,
       countsByFolder: async () => new Map(),
       insert: async () => ({ id: "d", folderId: "f", filename: "x", contentType: "x", sizeBytes: 0, s3Key: "x", uploadedBy: null, createdAt: "x" }),
       findById: async () => null,
       deleteById: async () => null,
+      deleteByFolder: async () => [],
     },
     storage: storage ?? fakeStorage(),
     requireUser,
@@ -619,6 +621,26 @@ describe("DELETE /api/admin/folders/:id", () => {
     expect(res.statusCode).toBe(204);
     expect(trashed).toEqual([APPROVED_ITEM.id]);
     expect(softDeleted).toBe("f-disabled");
+  });
+
+  it("disabled album with documents → deletes the documents (rows + S3)", async () => {
+    let deletedFolder: string | undefined;
+    let deletedKeys: string[] | undefined;
+    const foldersRepo = fakeFoldersRepo({ findById: async () => FOLDER_DISABLED, softDelete: async () => true });
+    const documentsRepo = {
+      listByFolder: async () => [], countByFolder: async () => 0, countsByFolder: async () => new Map(),
+      insert: async () => ({ id: "d", folderId: "f", filename: "x", contentType: "x", sizeBytes: 0, s3Key: "x", uploadedBy: null, createdAt: "x" }),
+      findById: async () => null, deleteById: async () => null,
+      deleteByFolder: async (fid: string) => { deletedFolder = fid; return [{ s3Key: "documents/da" }, { s3Key: "documents/db" }]; },
+    };
+    const storage = fakeStorage({ deleteObjects: async (keys) => { deletedKeys = keys; } });
+    const app = await makeApp(foldersRepo, ADMIN, fakeItemsRepo(), storage, documentsRepo);
+
+    const res = await app.inject({ method: "DELETE", url: "/api/admin/folders/f-disabled" });
+
+    expect(res.statusCode).toBe(204);
+    expect(deletedFolder).toBe("f-disabled");
+    expect(deletedKeys).toEqual(["documents/da", "documents/db"]);
   });
 
   it("enabled album → 400 must_disable_first (no trashing)", async () => {

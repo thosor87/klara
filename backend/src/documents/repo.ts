@@ -31,6 +31,8 @@ export interface DocumentsRepo {
   findById(id: string): Promise<DocumentRow | null>;
   /** Delete a row, returning its s3Key (or null if not found). */
   deleteById(id: string): Promise<{ s3Key: string } | null>;
+  /** Delete all of a folder's documents, returning their s3Keys (for S3 cleanup). */
+  deleteByFolder(folderId: string): Promise<{ s3Key: string }[]>;
 }
 
 function mapDoc(r: Record<string, unknown>): DocumentRow {
@@ -78,6 +80,11 @@ export function createPostgresDocumentsRepo(sql: SqlTag): DocumentsRepo {
       const rows = await sql<{ s3_key: string }[]>`
         DELETE FROM documents WHERE id = ${id} RETURNING s3_key`;
       return rows.length ? { s3Key: rows[0].s3_key } : null;
+    },
+    async deleteByFolder(folderId) {
+      const rows = await sql<{ s3_key: string }[]>`
+        DELETE FROM documents WHERE folder_id = ${folderId} RETURNING s3_key`;
+      return rows.map((r) => ({ s3Key: r.s3_key }));
     },
   };
 }

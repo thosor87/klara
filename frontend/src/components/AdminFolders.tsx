@@ -328,10 +328,14 @@ function FolderRow({
 
   async function handleDelete() {
     if (busy) return;
+    const docs = folder.documentCount ?? 0;
     const ok = await ask({
       title: "Album löschen",
       message:
-        "Das Album wird gelöscht. Alle Fotos darin wandern in den Papierkorb und werden dort nach 30 Tagen endgültig entfernt.",
+        "Das Album wird gelöscht. Alle Fotos & Videos wandern in den Papierkorb (30 Tage wiederherstellbar)." +
+        (docs > 0
+          ? ` ${docs} Dokument${docs !== 1 ? "e" : ""} werden dabei endgültig gelöscht — für Dokumente gibt es keinen Papierkorb.`
+          : ""),
       confirmLabel: "Album löschen",
       danger: true,
     });
