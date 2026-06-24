@@ -2,7 +2,7 @@
 // Bump APP_VERSION and add an entry when you ship something worth noting.
 // The build stamp (git SHA + date) is injected automatically by Vite — see vite.config.ts.
 
-export const APP_VERSION = "1.0.0";
+export const APP_VERSION = "1.0.1";
 
 export interface ChangelogEntry {
   version: string;
@@ -11,6 +11,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.0.1",
+    date: "2026-06-24",
+    changes: [
+      "Sicherheits-Härtung im Hintergrund: erzwungene Transportverschlüsselung, strengere Browser-Schutzheader (CSP & Co.) und Schutz vor Login-Missbrauch.",
+      "Videos werden beim Aufbereiten von Metadaten (inkl. GPS-Standort) befreit.",
+    ],
+  },
   {
     version: "1.0.0",
     date: "2026-06-24",
