@@ -1,9 +1,10 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { api, type Folder, type ClassOption, type Item, type Me } from "../api";
+import { api, type Folder, type ClassOption, type Item, type Me, type AlbumDocument } from "../api";
 import { formatDateRange, toDateInput } from "../dates";
 import { Trash } from "./Trash";
 import { useConfirm } from "./ConfirmDialog";
+import { formatBytes } from "./DocumentList";
 
 type OutletCtx = { me?: Me };
 
@@ -161,6 +162,95 @@ function FolderFormFields({
         </div>
       </div>
       </div>
+    </div>
+  );
+}
+
+/** Per-album document manager (admin): list, upload (≤10), delete. */
+function FolderDocuments({ folderId }: { folderId: string }) {
+  const [docs, setDocs] = useState<AlbumDocument[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { ask, dialog } = useConfirm();
+
+  function load() {
+    api.getFolderDocuments(folderId).then(setDocs).catch(() => {});
+  }
+  useEffect(load, [folderId]);
+
+  const full = docs.length >= 10;
+
+  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || busy) return;
+    setBusy(true);
+    setErr("");
+    try {
+      const ct = file.type || "application/octet-stream";
+      const { docId, uploadUrl } = await api.presignDocument(folderId, ct);
+      const put = await fetch(uploadUrl, { method: "PUT", headers: { "content-type": ct }, body: file });
+      if (!put.ok) throw new Error(`upload ${put.status}`);
+      await api.confirmDocument(folderId, docId, file.name, ct);
+      load();
+    } catch (e: any) {
+      const m = String(e?.message ?? "");
+      setErr(
+        m.includes("document_too_large") ? "Datei zu groß (max. 25 MB)."
+        : m.includes("document_limit_reached") ? "Maximal 10 Dokumente pro Album."
+        : "Upload fehlgeschlagen.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(doc: AlbumDocument) {
+    const ok = await ask({
+      title: "Dokument löschen",
+      message: `„${doc.filename}" wird unwiderruflich gelöscht.`,
+      confirmLabel: "Löschen",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await api.deleteDocument(doc.id);
+      setDocs((prev) => prev.filter((d) => d.id !== doc.id));
+    } catch {
+      setErr("Löschen fehlgeschlagen.");
+    }
+  }
+
+  return (
+    <div className="folder-docs">
+      <div className="folder-docs-head">
+        <span className="folder-docs-title">Dokumente <span className="muted">{docs.length}/10</span></span>
+        <button
+          type="button"
+          className="btn-xs"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy || full}
+          title={full ? "Maximal 10 erreicht" : "Dokument hochladen"}
+        >
+          {busy ? "Lädt …" : "+ Dokument"}
+        </button>
+        <input ref={inputRef} type="file" style={{ display: "none" }} onChange={onPick} />
+      </div>
+      {err && <p className="err" style={{ fontSize: ".82rem", margin: ".25rem 0 0" }}>{err}</p>}
+      {docs.length > 0 && (
+        <ul className="folder-docs-list">
+          {docs.map((d) => (
+            <li key={d.id} className="folder-docs-item">
+              <span className="folder-docs-name">{d.filename}</span>
+              <span className="muted folder-docs-size">{formatBytes(d.sizeBytes)}</span>
+              <a className="folder-docs-dl" href={d.downloadUrl} download={d.filename} title="Herunterladen">↓</a>
+              <button type="button" className="btn-danger-ghost btn-xs" onClick={() => remove(d)}>Löschen</button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {dialog}
     </div>
   );
 }
@@ -329,6 +419,7 @@ function FolderRow({
           </button>
         )}
       </div>
+      <FolderDocuments folderId={folder.id} />
       {err && <p className="err">{err}</p>}
       {confirmDialog}
     </li>

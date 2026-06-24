@@ -1277,3 +1277,36 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
   .album-date-sep { display: none; }
   .album-submit { width: 100%; }
 }
+
+/* ---- Album documents (read-only list atop the album view) ---- */
+.doc-list {
+  margin: 0 0 1.5rem; border: 1px solid var(--purple-line); border-radius: 14px;
+  background: var(--paper-card, #fff); padding: 1rem 1.1rem; box-shadow: var(--shadow-sm);
+}
+.doc-list-title { font-family: var(--font-display); font-size: 1.05rem; margin: 0 0 .6rem; color: var(--ink); }
+.doc-list-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
+.doc-row { display: flex; align-items: center; gap: .8rem; padding: .5rem .55rem; border-radius: 10px; }
+.doc-row:hover { background: var(--purple-tint); }
+.doc-icon { position: relative; color: var(--purple); flex: 0 0 auto; display: inline-flex; }
+.doc-tag {
+  position: absolute; bottom: -4px; right: -9px; font-size: .54rem; font-weight: 800;
+  background: var(--purple); color: #fff; border-radius: 4px; padding: 0 3px; letter-spacing: .02em;
+}
+.doc-meta { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.doc-name { font-weight: 600; color: var(--ink); word-break: break-word; line-height: 1.2; }
+.doc-size { font-size: .76rem; color: var(--ink-soft); }
+.doc-download {
+  flex: 0 0 auto; color: var(--purple); font-weight: 600; text-decoration: none;
+  font-size: .88rem; white-space: nowrap; padding: .25rem .2rem;
+}
+.doc-download:hover { text-decoration: underline; }
+
+/* ---- Per-album document manager (Albenverwaltung) ---- */
+.folder-docs { margin-top: .6rem; padding-top: .6rem; border-top: 1px dashed var(--purple-line); }
+.folder-docs-head { display: flex; align-items: center; gap: .6rem; }
+.folder-docs-title { font-size: .85rem; font-weight: 700; color: var(--ink); }
+.folder-docs-list { list-style: none; margin: .45rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; }
+.folder-docs-item { display: flex; align-items: center; gap: .5rem; font-size: .85rem; }
+.folder-docs-name { font-weight: 600; color: var(--ink); flex: 1; min-width: 0; word-break: break-word; }
+.folder-docs-size { font-size: .74rem; flex: 0 0 auto; }
+.folder-docs-dl { flex: 0 0 auto; color: var(--purple); text-decoration: none; font-weight: 800; font-size: 1rem; padding: 0 .25rem; }

@@ -47,6 +47,15 @@ export interface Item {
   mine?: boolean;
 }
 
+export interface AlbumDocument {
+  id: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  createdAt: string;
+  downloadUrl: string;
+}
+
 export interface PendingItem extends Item {
   folderId: string;
   folderName: string;
@@ -267,6 +276,38 @@ export const api = {
     const res = await fetch(`/api/items/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
+  },
+
+  // Album documents
+  async getFolderDocuments(folderId: string): Promise<AlbumDocument[]> {
+    const data = await jsonOrNull(await fetch(`/api/folders/${folderId}/documents`));
+    return data ?? [];
+  },
+  async presignDocument(folderId: string, contentType: string): Promise<{ docId: string; uploadUrl: string }> {
+    const res = await fetch(`/api/admin/folders/${folderId}/documents/presign`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ contentType }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d?.error ?? `Fehler ${res.status}`);
+    }
+    return res.json();
+  },
+  async confirmDocument(folderId: string, docId: string, filename: string, contentType: string): Promise<AlbumDocument> {
+    const res = await fetch(`/api/admin/folders/${folderId}/documents`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ docId, filename, contentType }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d?.error ?? `Fehler ${res.status}`);
+    }
+    return res.json();
+  },
+  async deleteDocument(docId: string): Promise<void> {
+    const res = await fetch(`/api/admin/documents/${docId}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(await res.text());
   },
 
   // Admin

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams, useOutletContext, Link } from "react-router-dom";
-import { api, type Folder, type Item, type Me, type ClassOption } from "../api";
+import { api, type Folder, type Item, type Me, type ClassOption, type AlbumDocument } from "../api";
 import { UploadDialog } from "./UploadDialog";
+import { DocumentList } from "./DocumentList";
 import { Gallery } from "./Gallery";
 import { Lightbox } from "./Lightbox";
 import { ShareDialog } from "./ShareDialog";
@@ -24,6 +25,7 @@ export function FolderView() {
   const [folder, setFolder] = useState<Folder | null>(null);
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const [items, setItems] = useState<Item[]>([]);
+  const [documents, setDocuments] = useState<AlbumDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
@@ -51,6 +53,7 @@ export function FolderView() {
       .then((fs) => setFolder(fs.find((f) => f.id === folderId) ?? null))
       .catch(() => setFolder(null));
     api.getClassOptions().then(setClassOptions).catch(() => {});
+    api.getFolderDocuments(folderId).then(setDocuments).catch(() => setDocuments([]));
   }, [folderId]);
 
   useEffect(() => { loadItems(); }, [folderId]);
@@ -188,6 +191,8 @@ export function FolderView() {
           </button>
         </div>
       </div>
+
+      <DocumentList documents={documents} />
 
       {loading && <p className="muted">Lädt Fotos …</p>}
       {!loading && error && <p className="err">Fotos konnten nicht geladen werden.</p>}
