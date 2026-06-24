@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type User, type ClassOption } from "../api";
 import { DomainsCard } from "./Settings";
+import { AuditLog } from "./AuditLog";
 
 function statusLabel(status: string): string {
   if (status === "active") return "Aktiv";
@@ -438,6 +439,8 @@ export function AdminUsers() {
       <div className="settings-page" style={{ marginTop: "2rem" }}>
         <DomainsCard />
       </div>
+
+      <AuditLog />
     </div>
   );
 }

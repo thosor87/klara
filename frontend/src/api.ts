@@ -58,6 +58,14 @@ export interface AlbumDocument {
   downloadUrl: string;
 }
 
+export interface AuditEntry {
+  id: string;
+  actorEmail: string;
+  action: string;
+  summary: string;
+  createdAt: string;
+}
+
 export interface PendingItem extends Item {
   folderId: string;
   folderName: string;
@@ -310,6 +318,12 @@ export const api = {
   async deleteDocument(docId: string): Promise<void> {
     const res = await fetch(`/api/admin/documents/${docId}`, { method: "DELETE" });
     if (!res.ok) throw new Error(await res.text());
+  },
+
+  // Audit log
+  async getAudit(limit = 200): Promise<AuditEntry[]> {
+    const data = await jsonOrNull(await fetch(`/api/admin/audit?limit=${limit}`));
+    return data ?? [];
   },
 
   // Admin
