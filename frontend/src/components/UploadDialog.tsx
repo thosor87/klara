@@ -92,7 +92,7 @@ export function UploadDialog({ folderId, onClose, onUploaded }: {
         <h2 id="upload-dialog-title">Fotos & Videos hochladen</h2>
         <p className="muted">
           Fotos werden verkleinert; Videos (max. 60&nbsp;s, 150&nbsp;MB) werden direkt geladen.
-          Alles geht zur Freigabe an die Lehrerin.
+          Alles geht zur Freigabe an die Lehrkraft.
         </p>
 
         <input

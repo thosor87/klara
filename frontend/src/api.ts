@@ -10,6 +10,7 @@ export interface Folder {
   classLabel?: string;
   enabled: boolean;
   itemCount: number;
+  pendingCount?: number;
   documentCount?: number;
   sortOrder?: number;
   startDate?: string | null;

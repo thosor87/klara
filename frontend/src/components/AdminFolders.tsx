@@ -365,7 +365,12 @@ function FolderRow({
 
         <div className="admin-folder-edit-extras">
           <div className="folder-photo-upload">
-            <span className="folder-docs-title">Fotos & Videos</span>
+            <span className="folder-docs-title">
+              Fotos & Videos{" "}
+              <span className="muted">
+                {folder.itemCount}{folder.pendingCount ? ` · ${folder.pendingCount} zur Prüfung` : ""}
+              </span>
+            </span>
             <button type="button" className="btn-xs" onClick={() => setShowUpload(true)}>
               + Hochladen
             </button>
@@ -557,6 +562,8 @@ export function AdminFolders() {
   const [createBusy, setCreateBusy] = useState(false);
   const [createErr, setCreateErr] = useState("");
   const [coverFor, setCoverFor] = useState<Folder | null>(null);
+  const [createdFolder, setCreatedFolder] = useState<Folder | null>(null);
+  const [uploadFolder, setUploadFolder] = useState<Folder | null>(null);
 
   function reload() {
     return api.getFolders().then((f) => setFolders(f));
@@ -598,7 +605,7 @@ export function AdminFolders() {
     setCreateBusy(true);
     setCreateErr("");
     try {
-      await api.createFolder({
+      const created = await api.createFolder({
         name: createForm.name.trim(),
         startDate: createForm.startDate || null,
         endDate: createForm.endDate || null,
@@ -607,6 +614,8 @@ export function AdminFolders() {
       await reload();
       setCreateForm(newAlbumForm());
       setShowCreate(false);
+      // Offer to add content right away — more intuitive than hunting for the new row.
+      setCreatedFolder(created);
     } catch (e: any) {
       setCreateErr(e.message ?? "Fehler beim Anlegen.");
     } finally {
@@ -676,6 +685,32 @@ export function AdminFolders() {
           folder={coverFor}
           onClose={() => setCoverFor(null)}
           onChosen={handleUpdated}
+        />
+      )}
+
+      {createdFolder && (
+        <div className="dialog-backdrop" role="dialog" aria-modal="true" aria-label="Album angelegt">
+          <div className="dialog-card postcreate-card">
+            <h2>Album „{createdFolder.name}" angelegt 🎉</h2>
+            <p className="muted" style={{ marginTop: ".3rem" }}>
+              Direkt etwas hinzufügen? (Kannst du auch später jederzeit über „Bearbeiten".)
+            </p>
+            <button style={{ marginTop: "1rem" }} onClick={() => setUploadFolder(createdFolder)}>
+              📷 Fotos & Videos hochladen
+            </button>
+            <FolderDocuments folderId={createdFolder.id} onChanged={() => reload().catch(() => {})} />
+            <div className="dialog-actions" style={{ marginTop: "1rem" }}>
+              <button className="btn-ghost-dark" onClick={() => setCreatedFolder(null)}>Fertig</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {uploadFolder && (
+        <UploadDialog
+          folderId={uploadFolder.id}
+          onClose={() => setUploadFolder(null)}
+          onUploaded={() => reload().catch(() => {})}
         />
       )}
 

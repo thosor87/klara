@@ -545,7 +545,12 @@ button:disabled { opacity: .5; cursor: default; }
 .approval-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
 .approval-checkbox { position: absolute; top: .5rem; left: .5rem; width: 18px; height: 18px; accent-color: var(--purple); cursor: pointer; }
 .approval-info { padding: .5rem .6rem; }
-.approval-folder { font-size: .8rem; color: var(--purple); font-weight: 600; }
+.approval-folder {
+  display: inline-flex; align-items: center; max-width: 100%;
+  font-size: .76rem; color: var(--purple-deep); font-weight: 700;
+  background: var(--purple-tint); border-radius: 999px; padding: .14rem .6rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .approval-caption { font-size: .8rem; color: var(--ink-soft); margin-top: .2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .placeholder { color: var(--ink-soft); padding: 2rem; text-align: center; }
 
@@ -1323,4 +1328,6 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
   display: flex; flex-direction: column; gap: .9rem;
 }
 .folder-photo-upload { display: flex; align-items: center; gap: .7rem; }
+.postcreate-card { text-align: left; max-width: 460px; }
+.postcreate-card .folder-docs { margin-top: 1.1rem; }
 .admin-folder-edit-extras .folder-docs { margin-top: 0; padding-top: 0; border-top: none; }

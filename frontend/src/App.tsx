@@ -79,7 +79,7 @@ function LoginGate({ onLoggedIn }: { onLoggedIn: (me: Me) => void }) {
       const outcome = await api.requestLogin(email);
       if (outcome === "code_sent") setStage("code");
       else if (outcome === "pending") setStage("pending");
-      else setNotice("Diese Adresse ist nicht freigeschaltet. Wenn das ein Fehler ist, wende dich an die Lehrerin.");
+      else setNotice("Diese Adresse ist nicht freigeschaltet. Wenn das ein Fehler ist, wende dich an die Lehrkraft.");
     } catch {
       setErr("Anfrage fehlgeschlagen. Bitte erneut versuchen.");
     } finally {
@@ -122,7 +122,7 @@ function LoginGate({ onLoggedIn }: { onLoggedIn: (me: Me) => void }) {
       ) : stage === "pending" ? (
         <main className="card auth-card">
           <h1 className="auth-title">KlaRa</h1>
-          <p className="muted">Deine Anmeldung wartet noch auf Freischaltung durch die Lehrerin.
+          <p className="muted">Deine Anmeldung wartet noch auf Freischaltung durch die Lehrkraft.
             Sobald sie dich freischaltet, kannst du dich anmelden.</p>
           <button className="link-btn" onClick={backToEmail}>Andere Adresse</button>
         </main>

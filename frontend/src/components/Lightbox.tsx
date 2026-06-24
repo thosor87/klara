@@ -401,7 +401,7 @@ function ReportDialog({ itemId, onClose }: { itemId: string; onClose: () => void
           <>
             <h2>Danke!</h2>
             <p style={{ marginTop: ".5rem", color: "var(--ink-soft)" }}>
-              Die Lehrerin schaut sich das an.
+              Die Lehrkraft schaut sich das an.
             </p>
             <button onClick={onClose} style={{ marginTop: "1.25rem" }}>Schließen</button>
           </>

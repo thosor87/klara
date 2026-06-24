@@ -28,6 +28,9 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
 
       const counts = await foldersRepo.itemCounts();
       const docCounts = await documentsRepo.countsByFolder();
+      const pendingCounts = req.user!.role === "admin"
+        ? await foldersRepo.pendingCounts()
+        : new Map<string, number>();
 
       const result = await Promise.all(
         folders.map(async (f) => {
@@ -50,6 +53,7 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
             coverItemId: f.coverItemId,
             coverThumbUrl,
             itemCount: counts.get(f.id) ?? 0,
+            pendingCount: pendingCounts.get(f.id) ?? 0,
             documentCount: docCounts.get(f.id) ?? 0,
             classIds: f.classIds,
           };

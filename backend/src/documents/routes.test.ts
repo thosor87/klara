@@ -36,7 +36,7 @@ function fakeFoldersRepo(over: Partial<FoldersRepo> = {}): FoldersRepo {
     listAll: async () => [], listEnabled: async () => [], listForClass: async () => [],
     create: async () => FOLDER, update: async () => null, setClasses: async () => {},
     isVisibleToClass: async () => true, findById: async () => FOLDER,
-    itemCounts: async () => new Map(), move: async () => false, softDelete: async () => true,
+    itemCounts: async () => new Map(), pendingCounts: async () => new Map(), move: async () => false, softDelete: async () => true,
     ...over,
   };
 }

@@ -99,6 +99,7 @@ function fakeFoldersRepo(over: Partial<FoldersRepo> = {}): FoldersRepo {
     isVisibleToClass: async () => false,
     findById: async () => null,
     itemCounts: async () => new Map(),
+    pendingCounts: async () => new Map(),
     move: async () => false,
     softDelete: async () => true,
     ...over,

@@ -29,14 +29,14 @@ export function FolderList() {
     if (me && me.classId == null) {
       return (
         <p className="muted empty-hint">
-          Du bist noch keiner Klasse zugeordnet — die Lehrerin macht das, dann erscheinen
+          Du bist noch keiner Klasse zugeordnet — die Lehrkraft macht das, dann erscheinen
           hier die Alben deiner Klasse.
         </p>
       );
     }
     return (
       <p className="muted empty-hint">
-        Hier sind noch keine Alben für deine Klasse. Sobald die Lehrerin eins freigibt,
+        Hier sind noch keine Alben für deine Klasse. Sobald die Lehrkraft eins freigibt,
         erscheint es hier.
       </p>
     );

@@ -23,7 +23,7 @@ export function Anleitung() {
       </p>
       <div className="legal-note">
         Falls du keine Mail bekommst, ist deine Adresse vielleicht noch nicht freigeschaltet. Dann
-        meldet sich die Lehrerin bei dir, sobald dein Zugang aktiv ist.
+        meldet sich die Lehrkraft bei dir, sobald dein Zugang aktiv ist.
       </div>
 
       <h2>Fotos ansehen</h2>
@@ -58,7 +58,7 @@ export function Anleitung() {
       <p>
         In jedem Album kannst du eigene Fotos beitragen. Tippe auf „Hochladen", wähle ein oder
         mehrere Bilder aus, und sie werden hochgeladen. Deine Fotos sind zuerst mit dem Hinweis
-        <strong> „wartet auf Freigabe"</strong> markiert — die Lehrerin schaut sie kurz an, bevor
+        <strong> „wartet auf Freigabe"</strong> markiert — die Lehrkraft schaut sie kurz an, bevor
         sie für alle sichtbar werden.
       </p>
       <ul>
@@ -72,11 +72,11 @@ export function Anleitung() {
       <h2>Ein Foto melden</h2>
       <p>
         Wenn dir ein Bild Sorgen macht oder nicht gezeigt werden sollte, kannst du es melden. Öffne
-        das Foto und nutze die Melden-Funktion; schreib kurz dazu, worum es geht. Die Lehrerin
+        das Foto und nutze die Melden-Funktion; schreib kurz dazu, worum es geht. Die Lehrkraft
         bekommt die Meldung und kümmert sich darum.
       </p>
 
-      <h2>Für die Lehrerin (Admin)</h2>
+      <h2>Für die Lehrkraft (Admin)</h2>
       <p>Als Administratorin hast du zusätzliche Möglichkeiten:</p>
       <ul>
         <li>

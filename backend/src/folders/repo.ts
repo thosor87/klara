@@ -55,6 +55,8 @@ export interface FoldersRepo {
   findById(id: string): Promise<Folder | null>;
   /** folderId → approved item count */
   itemCounts(): Promise<Map<string, number>>;
+  /** folderId → pending (awaiting approval) item count */
+  pendingCounts(): Promise<Map<string, number>>;
   /**
    * Swap sort_order with adjacent folder (up = lower sort_order, down = higher).
    * Returns true if swap happened, false if already at boundary (no-op).
@@ -240,6 +242,17 @@ export function createPostgresFoldersRepo(sql: SqlTag): FoldersRepo {
       for (const row of rows) {
         map.set(row.folder_id, Number(row.count));
       }
+      return map;
+    },
+
+    async pendingCounts() {
+      const rows = await sql<{ folder_id: string; count: string }[]>`
+        SELECT folder_id, COUNT(*) AS count
+        FROM items
+        WHERE status = 'pending'
+        GROUP BY folder_id`;
+      const map = new Map<string, number>();
+      for (const row of rows) map.set(row.folder_id, Number(row.count));
       return map;
     },
 

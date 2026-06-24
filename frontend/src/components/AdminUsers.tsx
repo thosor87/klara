@@ -417,7 +417,7 @@ export function AdminUsers() {
             variant="pending"
           />
           <UserSection
-            title="Lehrerinnen / Admins"
+            title="Lehrkräfte / Admins"
             users={admins}
             classOptions={classOptions}
             onUpdated={handleUpdated}
