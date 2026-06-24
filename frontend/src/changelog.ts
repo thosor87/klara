@@ -2,7 +2,7 @@
 // Bump APP_VERSION and add an entry when you ship something worth noting.
 // The build stamp (git SHA + date) is injected automatically by Vite — see vite.config.ts.
 
-export const APP_VERSION = "1.0.1";
+export const APP_VERSION = "1.0.2";
 
 export interface ChangelogEntry {
   version: string;
@@ -11,6 +11,13 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.0.2",
+    date: "2026-06-24",
+    changes: [
+      "Nutzer endgültig löschen: Ein zuvor deaktiviertes Konto lässt sich jetzt dauerhaft entfernen (mit klarer Sicherheitsabfrage). Freigegebene Fotos bleiben in der Klasse.",
+    ],
+  },
   {
     version: "1.0.1",
     date: "2026-06-24",
