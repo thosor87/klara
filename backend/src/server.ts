@@ -58,9 +58,15 @@ export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance
     // ignores our override, which on a CDN leaves stale index.html pointing at
     // deleted hashed assets (→ "MIME type text/html" module errors).
     const indexHtml = readFileSync(path.join(frontendDist, "index.html"), "utf8");
+    const sendIndex = (reply: import("fastify").FastifyReply) =>
+      reply
+        .header("Cache-Control", "no-cache, must-revalidate")
+        .type("text/html")
+        .send(indexHtml);
+
     await app.register(fastifyStatic, {
       root: frontendDist,
-      index: false, // we serve index.html via the not-found handler with our own headers
+      index: false, // we serve index.html ourselves so we control its Cache-Control
       setHeaders: (res, filePath) => {
         if (filePath.includes(`${path.sep}assets${path.sep}`)) {
           // Vite content-hashes these filenames, so the name IS the cache-buster.
@@ -68,16 +74,15 @@ export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance
         }
       },
     });
+    // "/" is a directory root → @fastify/static (index:false) would 403, so serve it explicitly.
+    app.get("/", (_req, reply) => sendIndex(reply));
     app.setNotFoundHandler((req, reply) => {
       if (req.url.startsWith("/api/")) {
         reply.code(404).send({ error: "not_found" });
         return;
       }
-      // SPA entry (incl. "/") — never cache, so new deploys' hashed asset names load.
-      reply
-        .header("Cache-Control", "no-cache, must-revalidate")
-        .type("text/html")
-        .send(indexHtml);
+      // SPA deep links (not real files) — serve the entry, never cached.
+      sendIndex(reply);
     });
   }
 
