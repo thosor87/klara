@@ -2,15 +2,18 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { AuthRepo } from "../auth/repo.js";
 import type { ItemsRepo } from "../items/repo.js";
 import type { UserRole, UserStatus } from "../types.js";
+import { type Audit, noopAudit } from "../audit/recorder.js";
 
 export interface AdminUserRoutesDeps {
   authRepo: AuthRepo;
   itemsRepo: ItemsRepo;
   requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  audit?: Audit;
 }
 
 export function registerAdminUserRoutes(app: FastifyInstance, deps: AdminUserRoutesDeps): void {
   const { authRepo, itemsRepo, requireAdmin } = deps;
+  const audit = deps.audit ?? noopAudit;
 
   // GET /api/admin/users — list all users (admin only)
   app.get(
@@ -41,6 +44,7 @@ export function registerAdminUserRoutes(app: FastifyInstance, deps: AdminUserRou
       }
 
       const user = await authRepo.upsertActiveUser(email, role ?? "member");
+      audit.record(req, "user.invite", `Konto „${email}" eingeladen / aktiviert`);
       // Allow assigning the class directly when activating (e.g. a pending user).
       if (classId !== undefined) {
         const withClass = await authRepo.updateUser(user.id, { classId });
@@ -60,6 +64,7 @@ export function registerAdminUserRoutes(app: FastifyInstance, deps: AdminUserRou
         return reply.code(400).send({ error: "userIds is required" });
       }
       const updated = await authRepo.assignClass(userIds, classId ?? null);
+      audit.record(req, "user.assign-class", `Klasse ${classId ? "zugewiesen" : "entfernt"}: ${updated.length} Konto/Konten`);
       return reply.send(updated);
     },
   );
@@ -92,6 +97,14 @@ export function registerAdminUserRoutes(app: FastifyInstance, deps: AdminUserRou
       if (!updated) {
         return reply.code(404).send({ error: "not found" });
       }
+
+      const parts: string[] = [];
+      if (status === "active") parts.push("aktiviert");
+      if (status === "disabled") parts.push("deaktiviert");
+      if (role === "admin") parts.push("zu Admin gemacht");
+      if (role === "member") parts.push("zu Mitglied gemacht");
+      if (classId !== undefined) parts.push(classId ? "Klasse geändert" : "Klasse entfernt");
+      if (parts.length) audit.record(req, "user.update", `Konto „${updated.email}": ${parts.join(", ")}`);
 
       return reply.send(updated);
     },

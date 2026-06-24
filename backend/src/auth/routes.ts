@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import type { User } from "../types.js";
 import type { AuthService } from "./service.js";
 import { getCurrentUser } from "./guard.js";
+import { type Audit, noopAudit } from "../audit/recorder.js";
 
 const COOKIE = "klara_session";
 
@@ -10,10 +11,12 @@ export interface AuthRoutesDeps {
   findUserById: (id: string) => Promise<User | null>;
   sessionMaxDays: number;
   isProd: boolean;
+  audit?: Audit;
 }
 
 export function registerAuthRoutes(app: FastifyInstance, deps: AuthRoutesDeps): void {
   const { service, findUserById, sessionMaxDays, isProd } = deps;
+  const audit = deps.audit ?? noopAudit;
 
   function setSession(reply: FastifyReply, userId: string) {
     reply.setCookie(COOKIE, userId, {
@@ -35,6 +38,8 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRoutesDeps): 
     const user = await service.verifyCode(email, code);
     if (!user) return reply.code(401).send({ error: "invalid" });
     setSession(reply, user.id);
+    req.user = user;
+    audit.record(req, "login", "angemeldet (Code)");
     return reply.send({ user });
   });
 
@@ -43,6 +48,8 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRoutesDeps): 
     const user = token ? await service.verifyLink(token) : null;
     if (!user) return reply.redirect("/?login=fehlgeschlagen");
     setSession(reply, user.id);
+    req.user = user;
+    audit.record(req, "login", "angemeldet (Link)");
     return reply.redirect("/");
   });
 

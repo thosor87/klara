@@ -3,6 +3,7 @@ import type { FoldersRepo } from "./repo.js";
 import type { ItemsRepo } from "../items/repo.js";
 import type { DocumentsRepo } from "../documents/repo.js";
 import type { Storage } from "../storage/s3.js";
+import { type Audit, noopAudit } from "../audit/recorder.js";
 
 export interface FolderRoutesDeps {
   foldersRepo: FoldersRepo;
@@ -11,10 +12,12 @@ export interface FolderRoutesDeps {
   storage: Storage;
   requireUser: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  audit?: Audit;
 }
 
 export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDeps): void {
   const { foldersRepo, itemsRepo, documentsRepo, storage, requireUser, requireAdmin } = deps;
+  const audit = deps.audit ?? noopAudit;
 
   // GET /api/folders — members see only enabled, admins see all
   app.get(
@@ -97,6 +100,7 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
         classIds: Array.isArray(classIds) ? classIds : undefined,
       });
 
+      audit.record(req, "folder.create", `Album „${folder.name}" angelegt`);
       return reply.code(201).send(folder);
     },
   );
@@ -145,6 +149,8 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
         return reply.code(404).send({ error: "not found" });
       }
 
+      const what = enabled === true ? "aktiviert" : enabled === false ? "deaktiviert" : "bearbeitet";
+      audit.record(req, "folder.update", `Album „${updated.name}" ${what}`);
       return reply.send(updated);
     },
   );
@@ -191,6 +197,7 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
         await itemsRepo.setStatusTrashed(ids);
       }
       await foldersRepo.softDelete(id);
+      audit.record(req, "folder.delete", `Album „${folder.name}" gelöscht (${ids.length} Foto/Videos → Papierkorb)`);
       return reply.code(204).send();
     },
   );

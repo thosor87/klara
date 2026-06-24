@@ -16,6 +16,9 @@ import { createPostgresFoldersRepo } from "./folders/repo.js";
 import { registerFolderRoutes } from "./folders/routes.js";
 import { createPostgresDocumentsRepo } from "./documents/repo.js";
 import { registerDocumentRoutes } from "./documents/routes.js";
+import { createPostgresAuditRepo } from "./audit/repo.js";
+import { createAudit } from "./audit/recorder.js";
+import { registerAuditRoutes } from "./audit/routes.js";
 import { createPostgresItemsRepo } from "./items/repo.js";
 import { createItemsService } from "./items/service.js";
 import { registerItemRoutes } from "./items/routes.js";
@@ -106,6 +109,8 @@ export async function defaultRuntime(): Promise<BuildOptions> {
   });
 
   const storage = createS3Storage();
+  const auditRepo = createPostgresAuditRepo(sql);
+  const audit = createAudit(auditRepo);
   const foldersRepo = createPostgresFoldersRepo(sql);
   const documentsRepo = createPostgresDocumentsRepo(sql);
   const itemsRepo = createPostgresItemsRepo(sql);
@@ -121,15 +126,17 @@ export async function defaultRuntime(): Promise<BuildOptions> {
         service, findUserById: (id) => authRepo.findUserById(id),
         sessionMaxDays: config.sessionMaxDays,
         isProd: config.nodeEnv === "production",
+        audit,
       });
-      registerFolderRoutes(app, { foldersRepo, itemsRepo, documentsRepo, storage, requireUser, requireAdmin });
-      registerDocumentRoutes(app, { documentsRepo, foldersRepo, storage, maxDocumentBytes: config.maxDocumentBytes, requireUser, requireAdmin });
-      registerItemRoutes(app, { itemsService, requireUser, requireAdmin });
-      registerAdminUserRoutes(app, { authRepo, itemsRepo, requireAdmin });
-      registerReportRoutes(app, { reportsService, requireUser, requireAdmin });
+      registerFolderRoutes(app, { foldersRepo, itemsRepo, documentsRepo, storage, requireUser, requireAdmin, audit });
+      registerDocumentRoutes(app, { documentsRepo, foldersRepo, storage, maxDocumentBytes: config.maxDocumentBytes, requireUser, requireAdmin, audit });
+      registerItemRoutes(app, { itemsService, requireUser, requireAdmin, audit });
+      registerAdminUserRoutes(app, { authRepo, itemsRepo, requireAdmin, audit });
+      registerReportRoutes(app, { reportsService, requireUser, requireAdmin, audit });
       registerTrashRoutes(app, {
-        itemsRepo, storage, trashRetentionDays: config.trashRetentionDays, requireAdmin,
+        itemsRepo, storage, trashRetentionDays: config.trashRetentionDays, requireAdmin, audit,
       });
+      registerAuditRoutes(app, { auditRepo, requireAdmin });
       registerCronRoutes(app, {
         itemsRepo, reportsRepo, storage, mailer, authRepo,
         classOptionsRepo, graduationRepo,

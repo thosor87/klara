@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import type { DocumentsRepo, DocumentRow } from "./repo.js";
 import type { FoldersRepo } from "../folders/repo.js";
 import type { Storage } from "../storage/s3.js";
+import { type Audit, noopAudit } from "../audit/recorder.js";
 
 export const DOCUMENT_LIMIT = 10;
 
@@ -13,12 +14,14 @@ export interface DocumentRoutesDeps {
   maxDocumentBytes: number;
   requireUser: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  audit?: Audit;
 }
 
 const docKey = (id: string) => `documents/${id}`;
 
 export function registerDocumentRoutes(app: FastifyInstance, deps: DocumentRoutesDeps): void {
   const { documentsRepo, foldersRepo, storage, maxDocumentBytes, requireUser, requireAdmin } = deps;
+  const audit = deps.audit ?? noopAudit;
 
   async function toView(doc: DocumentRow) {
     return {
@@ -87,6 +90,7 @@ export function registerDocumentRoutes(app: FastifyInstance, deps: DocumentRoute
         s3Key: key,
         uploadedBy: req.user!.id,
       });
+      audit.record(req, "document.add", `Dokument „${filename}" hochgeladen`);
       return reply.code(201).send(await toView(doc));
     },
   );
@@ -114,6 +118,7 @@ export function registerDocumentRoutes(app: FastifyInstance, deps: DocumentRoute
       const removed = await documentsRepo.deleteById(req.params.docId);
       if (!removed) return reply.code(404).send({ error: "document_not_found" });
       await storage.deleteObjects([removed.s3Key]);
+      audit.record(req, "document.delete", "Dokument gelöscht");
       return reply.code(204).send();
     },
   );

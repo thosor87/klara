@@ -1,16 +1,19 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { ItemsRepo } from "../items/repo.js";
 import type { Storage } from "../storage/s3.js";
+import { type Audit, noopAudit } from "../audit/recorder.js";
 
 export interface TrashRoutesDeps {
   itemsRepo: ItemsRepo;
   storage: Storage;
   trashRetentionDays: number;
   requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  audit?: Audit;
 }
 
 export function registerTrashRoutes(app: FastifyInstance, deps: TrashRoutesDeps): void {
   const { itemsRepo, storage, trashRetentionDays, requireAdmin } = deps;
+  const audit = deps.audit ?? noopAudit;
 
   // GET /api/admin/trash — list trashed items with daysLeft and presigned thumbUrl
   app.get(
@@ -69,6 +72,7 @@ export function registerTrashRoutes(app: FastifyInstance, deps: TrashRoutesDeps)
       if (keys) {
         await storage.deleteObjects([keys.s3Key, keys.thumbKey]);
       }
+      audit.record(req, "item.purge", "Foto/Video endgültig gelöscht");
       return reply.send({ ok: true });
     },
   );

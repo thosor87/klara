@@ -1,15 +1,18 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { ItemsService } from "./service.js";
 import { AppError } from "./service.js";
+import { type Audit, noopAudit } from "../audit/recorder.js";
 
 export interface ItemRoutesDeps {
   itemsService: ItemsService;
   requireUser: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  audit?: Audit;
 }
 
 export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): void {
   const { itemsService, requireUser, requireAdmin } = deps;
+  const audit = deps.audit ?? noopAudit;
 
   // POST /api/folders/:folderId/uploads/presign — generate presigned PUT URLs
   app.post<{ Params: { folderId: string }; Body: { contentType?: string; kind?: "photo" | "video" } }>(
@@ -135,6 +138,7 @@ export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): 
       }
 
       const result = await itemsService.approve(ids, req.user!.id);
+      if (result.approved > 0) audit.record(req, "item.approve", `${result.approved} Foto/Video freigegeben`);
       return reply.send(result);
     },
   );
@@ -151,6 +155,7 @@ export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): 
       }
 
       const result = await itemsService.reject(ids);
+      if (result.rejected > 0) audit.record(req, "item.reject", `${result.rejected} Foto/Video abgelehnt`);
       return reply.send(result);
     },
   );
@@ -167,6 +172,7 @@ export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): 
       }
 
       const result = await itemsService.unapprove(ids);
+      if (result.unapproved > 0) audit.record(req, "item.unapprove", `${result.unapproved} Foto/Video zurückgezogen`);
       return reply.send(result);
     },
   );
