@@ -62,6 +62,7 @@ export function registerItemRoutes(app: FastifyInstance, deps: ItemRoutesDeps): 
           { isAdmin: req.user!.role === "admin", classId: req.user!.classId },
           kind === "video" ? "video" : "photo",
         );
+        audit.record(req, "item.upload", `${kind === "video" ? "Video" : "Foto"} hochgeladen (wartet auf Freigabe)`);
         return reply.code(201).send(item);
       } catch (err) {
         if (err instanceof AppError && err.code === "upload_incomplete") {

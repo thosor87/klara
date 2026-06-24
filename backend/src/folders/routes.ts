@@ -134,6 +134,9 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
         }
       }
 
+      // Snapshot before the update so the audit log can say what actually changed.
+      const before = await foldersRepo.findById(id);
+
       const updated = await foldersRepo.update(id, {
         name,
         schoolYear,
@@ -149,8 +152,21 @@ export function registerFolderRoutes(app: FastifyInstance, deps: FolderRoutesDep
         return reply.code(404).send({ error: "not found" });
       }
 
-      const what = enabled === true ? "aktiviert" : enabled === false ? "deaktiviert" : "bearbeitet";
-      audit.record(req, "folder.update", `Album „${updated.name}" ${what}`);
+      // Build a human diff of what changed.
+      const sameClasses = (a: string[], b: string[]) =>
+        a.length === b.length && [...a].sort().join() === [...b].sort().join();
+      const parts: string[] = [];
+      if (before) {
+        if (before.enabled !== updated.enabled) parts.push(updated.enabled ? "aktiviert" : "deaktiviert");
+        if (before.name !== updated.name) parts.push(`Name → „${updated.name}"`);
+        if (before.startDate !== updated.startDate || before.endDate !== updated.endDate) parts.push("Zeitraum geändert");
+        if (!sameClasses(before.classIds, updated.classIds)) parts.push("Klassen geändert");
+        if (before.coverItemId !== updated.coverItemId) parts.push("Titelbild geändert");
+      }
+      const summary = parts.length
+        ? `Album „${updated.name}": ${parts.join(", ")}`
+        : `Album „${updated.name}" gespeichert`;
+      audit.record(req, "folder.update", summary);
       return reply.send(updated);
     },
   );
