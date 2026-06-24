@@ -1352,3 +1352,18 @@ details[open] > .audit-summary::before { content: "▾ "; }
 .audit-main { display: flex; flex-direction: column; min-width: 0; }
 .audit-text { color: var(--ink); font-size: .88rem; word-break: break-word; }
 .audit-meta { color: var(--ink-soft); font-size: .74rem; }
+
+/* ---- Version badge (bottom-right) + changelog page ---- */
+.version-badge {
+  position: fixed; z-index: 50;
+  right: max(.6rem, var(--safe-r)); bottom: max(.6rem, var(--safe-b));
+  font-size: .72rem; font-weight: 600; color: var(--ink-soft); text-decoration: none;
+  background: rgba(255, 255, 255, .85); border: 1px solid var(--purple-line);
+  border-radius: 999px; padding: .15rem .55rem; backdrop-filter: blur(4px);
+  transition: color .15s var(--ease), border-color .15s var(--ease);
+}
+.version-badge:hover { color: var(--purple); border-color: var(--purple); }
+.changelog-entry { margin-bottom: 1.6rem; }
+.changelog-entry h2 { margin-bottom: .4rem; }
+.changelog-date { font-size: .9rem; font-weight: 400; }
+.changelog-build { font-size: .8rem; margin-top: 2rem; }

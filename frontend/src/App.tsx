@@ -12,6 +12,8 @@ import { Footer } from "./components/Footer";
 import { Impressum } from "./components/Impressum";
 import { Datenschutz } from "./components/Datenschutz";
 import { Anleitung } from "./components/Anleitung";
+import { Changelog } from "./components/Changelog";
+import { VersionBadge } from "./components/VersionBadge";
 
 type Stage = "loading" | "email" | "code" | "in";
 
@@ -39,6 +41,7 @@ function AppRoutes({ me, onLogout }: { me: Me; onLogout: () => void }) {
         <Route path="/impressum" element={<Impressum />} />
         <Route path="/datenschutz" element={<Datenschutz />} />
         <Route path="/anleitung" element={<Anleitung />} />
+        <Route path="/changelog" element={<Changelog />} />
         <Route
           path="/freigabe"
           element={<RequireAdmin me={me}><Moderation /></RequireAdmin>}
@@ -155,6 +158,7 @@ function AuthBoundary() {
     "/impressum": <Impressum />,
     "/datenschutz": <Datenschutz />,
     "/anleitung": <Anleitung />,
+    "/changelog": <Changelog />,
   };
 
   useEffect(() => {
@@ -192,6 +196,7 @@ export function App() {
   return (
     <BrowserRouter>
       <AuthBoundary />
+      <VersionBadge />
     </BrowserRouter>
   );
 }
