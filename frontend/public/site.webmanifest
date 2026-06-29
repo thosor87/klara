@@ -5,7 +5,7 @@
   "lang": "de",
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#5b3fb0",
+  "theme_color": "#007C7D",
   "background_color": "#f6f3ee",
   "icons": [
     { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
