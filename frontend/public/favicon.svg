@@ -1,9 +1,9 @@
 <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="KlaRa">
-  <rect width="64" height="64" rx="16" fill="#5b3fb0"/>
-  <!-- photo frame -->
-  <rect x="13" y="17" width="38" height="30" rx="6" fill="#ffffff"/>
-  <!-- landscape: rolling hills -->
-  <path d="M13 41c6-7 10-7 15-2 5 5 9 4 13-2 3-4 6-4 10 0v4a6 6 0 0 1-6 6H19a6 6 0 0 1-6-6v0z" fill="#5b3fb0"/>
-  <!-- sun / amber accent -->
-  <circle cx="41" cy="27" r="5" fill="#f2a541"/>
+  <rect width="64" height="64" rx="14" fill="#007C7D"/>
+  <!-- Bold "K" in den Markenfarben (Pfad-basiert, kein Font-Zwang) -->
+  <g stroke="#F5D170" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="19" y1="15" x2="19" y2="49"/>
+    <line x1="25" y1="32" x2="47" y2="15"/>
+    <line x1="25" y1="32" x2="47" y2="49"/>
+  </g>
 </svg>

@@ -4,8 +4,7 @@ export function TopBar({ email, onLogout }: { email: string; onLogout: () => voi
   return (
     <header className="topbar">
       <Link to="/" className="topbar-brand" aria-label="Zur Startseite">
-        <span className="topbar-mark" aria-hidden="true" />
-        KlaRa
+        <img src="/klara-logo.png" alt="KlaRa" className="topbar-logo" />
       </Link>
       <div className="topbar-right">
         <span className="topbar-email">{email}</span>
