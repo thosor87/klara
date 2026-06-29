@@ -1,12 +1,12 @@
 /* ===========================================================================
    KlaRa — Galerie. Warmes "Klassenalbum": Petrol-Leitfarbe (#007C7D), Papier-Hintergrund,
-   Fredoka (selbst-gehostet, Iskra-nah) als runde Display-Schrift, System-Font für Fließtext.
+   Sniglet (selbst-gehostet) als runde Display-Schrift, System-Font für Fließtext.
    Vollbild-Galerie als dunkles Theater, damit die Fotos leuchten.
    =========================================================================== */
 
 :root {
-  --ink: #221b33;
-  --ink-soft: #6b6580;
+  --ink: #1f2a2b;
+  --ink-soft: #5f6b6b;
   --brand: #007C7D;
   --brand-deep: #006264;
   --brand-tint: #e9f4f3;
@@ -21,7 +21,7 @@
   --shadow-md: 0 8px 26px rgba(0, 124, 125, .12);
   --shadow-lg: 0 18px 50px rgba(0, 124, 125, .22);
   --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Fredoka Variable", "Fredoka", system-ui, sans-serif;
+  --font-display: "Sniglet", system-ui, sans-serif;
   --ease: cubic-bezier(.2, .7, .2, 1);
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
@@ -91,7 +91,7 @@ button:disabled { opacity: .5; cursor: default; }
         border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
 .auth-card { animation: rise .5s var(--ease) both; }
 .auth-title { margin: 0 0 .8rem; }
-.auth-logo { display: block; width: 100%; max-width: 200px; height: auto; }
+.auth-logo { display: block; width: 100%; max-width: 260px; height: auto; }
 
 /* ---------- App shell ---------- */
 .app { display: flex; flex-direction: column; min-height: 100dvh; }
@@ -1040,7 +1040,7 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
 .site-footer a:hover { text-decoration: underline; }
 .site-footer .footer-sep { color: var(--brand-line); }
 .footer-brand { display: inline-flex; align-items: center; }
-.footer-logo { display: block; height: 16px; width: auto; opacity: .85; }
+.footer-logo { display: block; height: 12px; width: auto; }
 .auth-footer { margin-top: 0; }
 
 .legal-page {
@@ -1220,7 +1220,7 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
 .album-label-link::before { content: "↗ "; opacity: .7; font-weight: 700; }
 .album-label-link:hover { color: var(--brand-deep); text-decoration: underline; }
 
-/* Name = Held: groß, charaktervoll (Fredoka) */
+/* Name = Held: groß, charaktervoll (Sniglet) */
 .album-field--name { gap: .5rem; }
 .album-name-input {
   width: 100%; margin: 0;

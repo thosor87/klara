@@ -113,7 +113,7 @@ function LoginGate({ onLoggedIn }: { onLoggedIn: (me: Me) => void }) {
     <div className="app">
       {stage === "code" ? (
         <main className="card auth-card">
-          <h1 className="auth-title"><img src="/klara-logo.png" alt="KlaRa" className="auth-logo" /></h1>
+          <h1 className="auth-title"><img src="/klara-logo-claim.png" alt="KlaRa — Dein digitaler Klassenraum" className="auth-logo" /></h1>
           <p className="muted">Wenn deine Adresse freigeschaltet ist, kommt gleich eine Mail mit
             einem 6-stelligen Code. Gib ihn hier ein (oder klick den Link in der Mail).</p>
           <form onSubmit={submitCode}>
@@ -126,14 +126,14 @@ function LoginGate({ onLoggedIn }: { onLoggedIn: (me: Me) => void }) {
         </main>
       ) : stage === "pending" ? (
         <main className="card auth-card">
-          <h1 className="auth-title"><img src="/klara-logo.png" alt="KlaRa" className="auth-logo" /></h1>
+          <h1 className="auth-title"><img src="/klara-logo-claim.png" alt="KlaRa — Dein digitaler Klassenraum" className="auth-logo" /></h1>
           <p className="muted">Deine Anmeldung wartet noch auf Freischaltung durch die Lehrkraft.
             Sobald sie dich freischaltet, kannst du dich anmelden.</p>
           <button className="link-btn" onClick={backToEmail}>Andere Adresse</button>
         </main>
       ) : (
         <main className="card auth-card">
-          <h1 className="auth-title"><img src="/klara-logo.png" alt="KlaRa" className="auth-logo" /></h1>
+          <h1 className="auth-title"><img src="/klara-logo-claim.png" alt="KlaRa — Dein digitaler Klassenraum" className="auth-logo" /></h1>
           <p className="muted">Melde dich mit deiner Schul-E-Mail an. Du bekommst einen Code per Mail.</p>
           <form onSubmit={submitEmail}>
             <input type="email" autoComplete="email" placeholder="name@grundschule-xy.de"
