@@ -386,7 +386,7 @@ export function AdminUsers() {
 
       {showAdd && (
         <div className="card" style={{ maxWidth: "none", margin: "1rem 0" }}>
-          <h3 style={{ margin: "0 0 .75rem", color: "#5b3fb0" }}>Nutzer einladen / freischalten</h3>
+          <h3 style={{ margin: "0 0 .75rem", color: "var(--brand)" }}>Nutzer einladen / freischalten</h3>
           <p className="muted">Existiert die E-Mail bereits, wird der Account auf aktiv gesetzt.</p>
           <form onSubmit={handleAdd}>
             <input
