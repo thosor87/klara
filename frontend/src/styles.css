@@ -115,9 +115,9 @@ button:disabled { opacity: .5; cursor: default; }
   font-family: var(--font-display); font-weight: 600; font-size: 1.35rem;
   text-decoration: none; color: #fff; letter-spacing: -.01em;
 }
-/* Bunte Wortmarke mit weißem Claim, direkt auf Petrol (kein Rahmen) */
+/* Bunte Wortmarke (ohne Claim), direkt auf Petrol (kein Rahmen) */
 .topbar-logo {
-  display: block; height: 44px; width: auto;
+  display: block; height: 32px; width: auto;
 }
 .topbar-right { display: flex; align-items: center; gap: .75rem; }
 .topbar-email { font-size: .85rem; opacity: .85; max-width: 40vw; overflow: hidden;
@@ -197,7 +197,7 @@ button:disabled { opacity: .5; cursor: default; }
   font-size: 2rem; width: 64px; height: 64px; display: grid; place-items: center;
   background: var(--brand-tint); border-radius: 20px; margin-bottom: .3rem;
 }
-.folder-name { font-family: var(--font-display); font-weight: 600; color: var(--ink); font-size: 1.1rem; }
+.folder-name { font-family: var(--font-display); font-weight: 400; color: var(--ink); font-size: 1.1rem; }
 .folder-meta { font-size: .8rem; color: var(--ink-soft); }
 .folder-count { font-size: .8rem; color: var(--brand); font-weight: 600; margin-top: .2rem; }
 
@@ -1155,7 +1155,7 @@ textarea.report-reason:focus { outline: 3px solid var(--accent); outline-offset:
   border-radius: 999px; padding: .2rem .6rem; line-height: 1;
 }
 .album-create-title {
-  margin: 0; font-family: var(--font-display); font-weight: 600;
+  margin: 0; font-family: var(--font-display); font-weight: 400;
   font-size: clamp(1.35rem, 3.5vw, 1.7rem); color: var(--ink); letter-spacing: -.01em;
   font-variation-settings: "opsz" 60;
 }
