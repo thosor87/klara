@@ -44,7 +44,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-h1, h2 { font-family: var(--font-display); font-weight: 600; letter-spacing: -.01em; }
+h1, h2 { font-family: var(--font-display); font-weight: 400; letter-spacing: -.01em; }
 
 a { color: inherit; }
 .sr-only {
@@ -115,11 +115,9 @@ button:disabled { opacity: .5; cursor: default; }
   font-family: var(--font-display); font-weight: 600; font-size: 1.35rem;
   text-decoration: none; color: #fff; letter-spacing: -.01em;
 }
-/* Bunte Wortmarke auf hellem Chip, damit die Pastelltöne auf Petrol lesbar bleiben */
+/* Bunte Wortmarke mit weißem Claim, direkt auf Petrol (kein Rahmen) */
 .topbar-logo {
-  display: block; height: 22px; width: auto;
-  background: #fff; padding: 6px 10px; border-radius: 10px;
-  box-shadow: var(--shadow-sm);
+  display: block; height: 44px; width: auto;
 }
 .topbar-right { display: flex; align-items: center; gap: .75rem; }
 .topbar-email { font-size: .85rem; opacity: .85; max-width: 40vw; overflow: hidden;
@@ -182,7 +180,7 @@ button:disabled { opacity: .5; cursor: default; }
 .page-head { margin: 0 0 1.4rem; }
 .page-kicker { margin: 0; color: var(--brand); font-weight: 600; font-size: .8rem;
                text-transform: uppercase; letter-spacing: .12em; }
-.page-title { margin: .1rem 0 0; font-size: clamp(1.8rem, 5vw, 2.6rem); color: var(--ink); }
+.page-title { margin: .1rem 0 0; font-size: clamp(1.8rem, 5vw, 2.6rem); color: var(--brand); }
 
 /* ---------- Folder grid ---------- */
 .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 1.1rem; }
