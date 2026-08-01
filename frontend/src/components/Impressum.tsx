@@ -25,6 +25,9 @@ export function Impressum() {
         E-Mail: <a href="mailto:tsoring@lilapixel.de">tsoring@lilapixel.de</a>
       </p>
 
+      <h2>Umsatzsteuer</h2>
+      <p>Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG: DE463919668</p>
+
       <h2>Zweck dieser Anwendung</h2>
       <p>
         KlaRa ist ein privates, nicht-kommerzielles Angebot zum geprüften
