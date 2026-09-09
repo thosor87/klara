@@ -31,6 +31,7 @@ import { registerCronRoutes } from "./cron/routes.js";
 import { createPostgresDomainsRepo, createPostgresClassOptionsRepo } from "./settings/repo.js";
 import { registerSettingsRoutes } from "./settings/routes.js";
 import { createPostgresGraduationRepo } from "./classes/repo.js";
+import { setStaticHeaders } from "./static-headers.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -101,12 +102,7 @@ export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance
     await app.register(fastifyStatic, {
       root: frontendDist,
       index: false, // we serve index.html ourselves so we control its Cache-Control
-      setHeaders: (res, filePath) => {
-        if (filePath.includes(`${path.sep}assets${path.sep}`)) {
-          // Vite content-hashes these filenames, so the name IS the cache-buster.
-          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-        }
-      },
+      setHeaders: setStaticHeaders,
     });
     // "/" is a directory root → @fastify/static (index:false) would 403, so serve it explicitly.
     app.get("/", (_req, reply) => sendIndex(reply));
