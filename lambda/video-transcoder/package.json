@@ -5,6 +5,6 @@
   "type": "module",
   "description": "S3-triggered Lambda: transcode KlaRa video uploads to 720p H.264 + thumbnail",
   "dependencies": {
-    "postgres": "^3.4.5"
+    "postgres": "^4.0.0"
   }
 }
